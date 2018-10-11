@@ -6,10 +6,8 @@
 
 set -e -u -x -o pipefail
 
-cd "$(dirname "$0")/../"
-
-source ci/includes/pinned-tools.sh
-source ci/includes/profiling.sh
+source "$(dirname "$0")/pinned-tools.sh"
+source "$(dirname "$0")/profiling.sh"
 
 # Only run inside TeamCity
 if [ -z "${TEAMCITY_CAPTURE_ENV+x}" ]; then
