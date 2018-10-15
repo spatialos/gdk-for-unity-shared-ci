@@ -4,16 +4,18 @@ set -e -u -o -x pipefail
 
 cd "$(dirname "$0")/../"
 
-TOOLS_TEST_RESULTS_FILES="${PROJECT_DIR}/logs/tools-test-results.xml"
+source scripts/pinned-tools.sh
+source scripts/profiling.sh
 
-markStartOfBlock "Tools Testing"
+markStartOfBlock "Build Tools"
 
+dotnet build tools/Tools.sln
+
+markEndOfBlock "Build Tools"
+
+markStartOfBlock "Test Tools"
+
+TOOLS_TEST_RESULTS_FILES="$(pwd)/logs/tools-test-results.xml"
 dotnet test --logger:"nunit;LogFilePath=${TOOLS_TEST_RESULTS_FILES}" "tools/DocsLinter/DocsLinter.csproj"
-TOOLS_TEST_RESULT=$?
 
-markEndOfBlock "Tools Testing"
-
-if [ $TOOLS_TEST_RESULT -ne 0 ]; then
-    >&2 echo "Tools Tests failed. Please check the file ${TOOLS_TEST_RESULTS_FILES} for more information."
-    exit 1
-fi
+markEndOfBlock "Test Tools"
