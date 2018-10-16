@@ -11,6 +11,18 @@ WORKER_TYPE=$2
 BUILD_TARGET=$3
 LOG_FILE=${4:-} # Optional argument - will log to console otherwise
 
+# The asset cache ip cannot be hardcoded and so is stored in an environment variable on the build agent.
+# This is bash shorthand syntax for if-else predicated on the existance of the environment variable 
+# where the else branch assigns an empty string.
+#   i.e. - 
+#   if [ -z ${UNITY_ASSET_CACHE_IP} ]; then
+#       ASSET_CACHE_ARG="-CacheServerIPAddress ${UNITY_ASSET_CACHE_IP}"
+#   else
+#       ASSET_CACHE_ARG=""
+#   fi
+
+ASSET_CACHE_ARG=${UNITY_ASSET_CACHE_IP:+-CacheServerIPAddress "${UNITY_ASSET_CACHE_IP}"}
+
 pushd "$(dirname "$0")/../"
     source "scripts/pinned-tools.sh"
     source "scripts/profiling.sh"
@@ -27,6 +39,7 @@ pushd "${UNITY_PROJECT_DIR}"
         -quit \
         -logfile "${LOG_FILE}" \
         -executeMethod "Improbable.Gdk.BuildSystem.WorkerBuilder.Build" \
+        ${ASSET_CACHE_ARG} \
         +buildWorkerTypes "${WORKER_TYPE}" \
         +buildTarget "${BUILD_TARGET}"
 popd
