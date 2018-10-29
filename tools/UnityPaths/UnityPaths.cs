@@ -53,6 +53,11 @@ namespace UnityPaths
                 return hubPath;
             }
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && Directory.Exists(Path.Combine(DefaultUnityPath, "Unity.App")))
+            {
+                return DefaultUnityPath;
+            }
+
             if (Directory.Exists(Path.Combine(DefaultUnityPath, "Editor")))
             {
                 // The DefaultUnityPath may contain other folders like "Hub", so sanity check that there's an Editor folder in it.
