@@ -37,7 +37,25 @@ export GOPATH
 
 if [ -d "$IMPROBABLE_UNITY_VERSIONED" ]; then
   echo "Unity is already installed in:" $IMPROBABLE_UNITY_VERSIONED
-  exit 0
+
+  if isWindows; then
+    PLAYBACK_ENGINE_ROOT="$IMPROBABLE_UNITY_VERSIONED/Editor/Data/PlaybackEngines"
+  elif isMacOS; then
+    PLAYBACK_ENGINE_ROOT="$IMPROBABLE_UNITY_VERSIONED/PlaybackEngines"
+  fi
+
+  # Note that on MacOS, Mac standalone support is installed within the Unity app package itself.
+  if [ -d "$PLAYBACK_ENGINE_ROOT/LinuxStandaloneSupport" ] && \
+     [ -d "$PLAYBACK_ENGINE_ROOT/AndroidPlayer" ] && \
+     [ -d "$PLAYBACK_ENGINE_ROOT/iOSSupport" ] && \
+     [ -d "$PLAYBACK_ENGINE_ROOT/WindowsStandaloneSupport" ] && \
+     [ isMacOS || -d "$PLAYBACK_ENGINE_ROOT/MacStandaloneSupport" ]
+  then
+    echo "All playback engines are already installed in: $PLAYBACK_ENGINE_ROOT."
+    exit 0
+  else
+    echo "Could not find all playback engines."
+  fi
 else
   echo "Could not find a Unity $UNITY_PINNED_VERSION installation."
 fi
