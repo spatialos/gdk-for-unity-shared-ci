@@ -49,7 +49,7 @@ if [ -d "$IMPROBABLE_UNITY_VERSIONED" ]; then
      [ -d "$PLAYBACK_ENGINE_ROOT/AndroidPlayer" ] && \
      [ -d "$PLAYBACK_ENGINE_ROOT/iOSSupport" ] && \
      [ -d "$PLAYBACK_ENGINE_ROOT/WindowsStandaloneSupport" ] && \
-     [ isMacOS || -d "$PLAYBACK_ENGINE_ROOT/MacStandaloneSupport" ]
+     ( isMacOS || [ -d "$PLAYBACK_ENGINE_ROOT/MacStandaloneSupport" ])
   then
     echo "All playback engines are already installed in: $PLAYBACK_ENGINE_ROOT."
     exit 0
