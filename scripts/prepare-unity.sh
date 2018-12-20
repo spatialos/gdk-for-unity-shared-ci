@@ -18,10 +18,10 @@ fi
 markStartOfBlock "$0"
 
 if isWindows; then
-  MODULES="linux,mac-mono,ios,android"
+  MODULES="linux,windows-il2cpp,mac-mono,ios,android"
   IMPROBABLE_UNITY_ROOT="C:/Unity"
 elif isMacOS; then
-  MODULES="linux,windows-mono,ios,android"
+  MODULES="linux,windows-mono,mac-il2cpp,ios,android"
   IMPROBABLE_UNITY_ROOT="/Applications/Unity"
 elif isLinux; then
   echo "Building is not supported on linux."
@@ -37,24 +37,8 @@ export GOPATH
 
 if [ -d "$IMPROBABLE_UNITY_VERSIONED" ]; then
   echo "Unity is already installed in:" $IMPROBABLE_UNITY_VERSIONED
-
-  if isWindows; then
-    PLAYBACK_ENGINE_ROOT="$IMPROBABLE_UNITY_VERSIONED/Editor/Data/PlaybackEngines"
-  elif isMacOS; then
-    PLAYBACK_ENGINE_ROOT="$IMPROBABLE_UNITY_VERSIONED/PlaybackEngines"
-  fi
-
-  # Note that on MacOS, Mac standalone support is installed within the Unity app package itself.
-  if [ -d "$PLAYBACK_ENGINE_ROOT/LinuxStandaloneSupport" ] && \
-     [ -d "$PLAYBACK_ENGINE_ROOT/AndroidPlayer" ] && \
-     [ -d "$PLAYBACK_ENGINE_ROOT/iOSSupport" ] && \
-     [ -d "$PLAYBACK_ENGINE_ROOT/WindowsStandaloneSupport" ] && \
-     ( isMacOS || [ -d "$PLAYBACK_ENGINE_ROOT/MacStandaloneSupport" ])
-  then
-    echo "All playback engines are already installed in: $PLAYBACK_ENGINE_ROOT."
+  if checkForAllPlaybackEngines $IMPROBABLE_UNITY_VERSIONED $IMPROBABLE_UNITY_ROOT; then
     exit 0
-  else
-    echo "Could not find all playback engines."
   fi
 else
   echo "Could not find a Unity $UNITY_PINNED_VERSION installation."

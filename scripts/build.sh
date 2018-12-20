@@ -9,7 +9,8 @@ set -e -u -x -o pipefail
 UNITY_PROJECT_DIR=$1
 WORKER_TYPE=$2
 BUILD_TARGET=$3
-LOG_FILE=${4:-} # Optional argument - will log to console otherwise
+SCRIPTING_BACKEND=$4
+LOG_FILE=${5:-} # Optional argument - will log to console otherwise
 
 # The asset cache ip cannot be hardcoded and so is stored in an environment variable on the build agent.
 # This is bash shorthand syntax for if-else predicated on the existance of the environment variable 
@@ -30,9 +31,10 @@ pushd "$(dirname "$0")/../"
     RUN_UNITY_PATH="$(pwd)/tools/RunUnity/RunUnity.csproj"
 popd
 
-markStartOfBlock "Building ${WORKER_TYPE} for ${BUILD_TARGET}"
+markStartOfBlock "Building ${WORKER_TYPE} for ${BUILD_TARGET} and ${SCRIPTING_BACKEND}"
 
 pushd "${UNITY_PROJECT_DIR}"
+    rm -rf ./build/worker/
     dotnet run -p "${RUN_UNITY_PATH}" -- \
         -projectPath "." \
         -batchmode \
@@ -41,7 +43,8 @@ pushd "${UNITY_PROJECT_DIR}"
         -executeMethod "Improbable.Gdk.BuildSystem.WorkerBuilder.Build" \
         ${ASSET_CACHE_ARG} \
         +buildWorkerTypes "${WORKER_TYPE}" \
-        +buildTarget "${BUILD_TARGET}"
+        +buildTarget "${BUILD_TARGET}" \
+        +scriptingBackend "${SCRIPTING_BACKEND}" 
 popd
 
-markEndOfBlock "Building ${WORKER_TYPE} for ${BUILD_TARGET}"
+markEndOfBlock "Building ${WORKER_TYPE} for ${BUILD_TARGET} and ${SCRIPTING_BACKEND}"
