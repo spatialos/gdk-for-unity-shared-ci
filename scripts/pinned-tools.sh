@@ -54,7 +54,7 @@ function checkForAllPlaybackEngines() {
   # Only check for Mac standalone support on Windows because it is installed within the Unity app package itself on MacOS.
   # Only check for Windows IL2CPP support on Windows agents, as Unity do not provide Windows-IL2CPP support for Mac.
   if isMacOS; then
-    [ ! -d "$IMPROBABLE_UNITY_ROOT/Unity.app/Contents/PlaybackEngines/MacStandaloneSupport/Variations/macosx64_development_il2cpp" ]
+    [ ! -d "$IMPROBABLE_UNITY_VERSIONED/Unity.app/Contents/PlaybackEngines/MacStandaloneSupport/Variations/macosx64_development_il2cpp" ]
     MAC_IL2CPP_ERROR=$?
   else
     [ ! -d "$PLAYBACK_ENGINE_ROOT/MacStandaloneSupport" ]
