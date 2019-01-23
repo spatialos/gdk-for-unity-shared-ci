@@ -3,7 +3,7 @@
 # This is a generic script for uploading assemblies in the GDK for Unity.
 # Note that this script needs to be called from a SpatialOS project with Git VCS.
 # The expected usage is as follows:
-#   bash upload-assemblies.sh <assembly_name_prefix>
+#   bash upload-assemblies.sh <assembly_name>
 
 set -e -u -x -o pipefail
 
@@ -18,13 +18,10 @@ pushd "$(dirname "$0")/../"
     source "scripts/profiling.sh"
 popd
 
-PREFIX=$1
+ASSEMBLY=$1
 
 markStartOfBlock "Uploading assemblies"
 
-# Get first 8 characters of current git hash.
-GIT_HASH="$(git rev-parse HEAD | cut -c1-8)"
-
-spatial cloud upload "${PREFIX}_${GIT_HASH}" --log_level=debug
+spatial cloud upload "${ASSEMBLY}" --log_level=debug
 
 markEndOfBlock "Uploading assemblies"

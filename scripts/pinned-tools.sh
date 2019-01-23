@@ -96,3 +96,17 @@ DOTNET_VERSION="$(dotnet --version)"
 if isWindows; then
   export MSBuildSDKsPath="${PROGRAMFILES}/dotnet/sdk/${DOTNET_VERSION}/Sdks"
 fi
+
+# Creates an assembly name based on an argument (used as a prefix) and the current Git hash.
+function setAssemblyName() {
+  # Get first 8 characters of current git hash.
+  GIT_HASH="$(git rev-parse HEAD | cut -c1-8)"
+
+  if [ "$#" -ne 1 ]; then
+    echo "'setAssemblyName' expects only one argument."
+    echo "Example usage: 'setAssemblyName my_prefix'"
+    exit 1
+  fi
+
+  ASSEMBLY_NAME="${1}_${GIT_HASH}"
+}
