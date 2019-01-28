@@ -63,12 +63,13 @@ namespace Packer
                 File.Delete(packageName);
             }
 
-            var archive = ZipFile.Open(packageName, ZipArchiveMode.Create);
+            using (var archive = ZipFile.Open(packageName, ZipArchiveMode.Create))
+            {
+                var blackList = config.GitPackages.SelectMany(package =>
+                    package.ExcludePaths.Select(subPath => Path.Combine(tempDir, package.CloneDir, subPath))).ToHashSet();
 
-            var blackList = config.GitPackages.SelectMany(package =>
-                package.ExcludePaths.Select(subPath => Path.Combine(tempDir, package.CloneDir, subPath))).ToHashSet();
-
-            AddToArchiveRecursive(archive, tempDir, blackList, tempDir.Length + 1);
+                AddToArchiveRecursive(archive, tempDir, blackList, tempDir.Length + 1);
+            }
         }
 
         private static void AddToArchiveRecursive(ZipArchive archive, string path, HashSet<string> blackList,
@@ -81,8 +82,12 @@ namespace Packer
                     continue;
                 }
 
-                // Strip away the base path (temporary directory) length + the leading slash
-                var entry = archive.CreateEntry(file.Remove(0, basePathLength));
+                // Strip away the base path (temporary directory) length + the leading slash.
+                // Replace Windows paths separators with MacOS friendly ones.
+                var relativePath = file.Remove(0, basePathLength);
+                var fixedPath = relativePath.Replace("\\", "/");
+                
+                var entry = archive.CreateEntry(fixedPath);
                 entry.ExternalAttributes = (int) File.GetAttributes(file);
                 using (var stream = entry.Open())
                 {
