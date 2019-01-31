@@ -110,3 +110,16 @@ function setAssemblyName() {
 
   ASSEMBLY_NAME="${1}_${GIT_HASH}"
 }
+
+function isDocsBranch() {
+  if [[ -n "${BUILDKITE_BRANCH-}" ]]; then
+    BRANCH="${BUILDKITE_BRANCH}"
+  else
+    BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+  fi
+
+  if [[ "${BRANCH}" == docs/* ]]; then
+    return 0
+  fi
+  return 1
+}
