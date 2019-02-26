@@ -6,14 +6,16 @@
 
 set -e -u -x -o pipefail
 
+source "$(dirname "$0")/pinned-tools.sh"
+source "$(dirname "$0")/profiling.sh"
+
 LOG_FILE=${1:-} # Optional argument - will log to console otherwise
 
-pushd "$(dirname "$0")/../"
-    source "scripts/pinned-tools.sh"
-    source "scripts/profiling.sh"
-
+if [[ -n "${BUILDKITE-}" ]]; then
     RUN_UNITY_PATH="$(pwd)/tools/RunUnity/RunUnity.csproj"
-popd
+else
+    RUN_UNITY_PATH="$(pwd)/.shared-ci/tools/RunUnity/RunUnity.csproj"
+fi
 
 markStartOfBlock "Setting Android dependencies"
 

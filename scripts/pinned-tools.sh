@@ -104,11 +104,26 @@ function setAssemblyName() {
 
   if [ "$#" -ne 1 ]; then
     echo "'setAssemblyName' expects only one argument."
-    echo "Example usage: 'setAssemblyName my_prefix'"
+    echo "Example usage: 'setAssemblyName <assembly prefix>'"
     exit 1
   fi
 
   ASSEMBLY_NAME="${1}_${GIT_HASH}"
+}
+
+# Uploads an assembly, given an assembly prefix and a project name
+function uploadAssembly() {
+  if [ "$#" -ne 2 ]; then
+    echo "'uploadAssembly' expects two arguments."
+    echo "Example usage: 'uploadAssembly <assembly prefix> <project name>'"
+    exit 1
+  fi
+
+  setAssemblyName "${1}"
+
+  markStartOfBlock "Uploading assembly"
+  spatial cloud upload "${ASSEMBLY_NAME}" --log_level=debug --force --enable_pre_upload_check=false --project_name="${2}"
+  markEndOfBlock "Uploading assembly"
 }
 
 function isDocsBranch() {
