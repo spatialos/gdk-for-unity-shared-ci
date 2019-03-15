@@ -5,6 +5,17 @@ if [[ -n "${DEBUG-}" ]]; then
   set -x
 fi
 
+# Workaround until the artifact proxying service is set up properly.
+# At least this gives us terminal output
+# https://improbableio.atlassian.net/browse/ENG-945
+function printLog() {
+    if [[ ${LOG_LOCATION-} ]]; then
+        cat "${LOG_LOCATION}" 1>&2 
+    fi
+}
+
+trap printLog ERR
+
 source "$(dirname "$0")/pinned-tools.sh"
 
 echo "Building for: ${WORKER_TYPE} ${BUILD_TARGET} ${SCRIPTING_TYPE}"
