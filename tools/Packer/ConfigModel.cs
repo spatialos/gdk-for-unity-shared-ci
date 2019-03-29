@@ -30,5 +30,10 @@ namespace Packer
 
             return JsonConvert.DeserializeObject<ConfigModel>(File.ReadAllText(path), settings);
         }
+
+        public void ToFile(string path)
+        {
+            File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
+        }
     }
 }

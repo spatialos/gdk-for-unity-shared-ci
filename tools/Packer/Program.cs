@@ -12,9 +12,26 @@ namespace Packer
     {
         private const string ConfigFile = "packer.config.json";
 
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
-            var config = ConfigModel.FromFile(Path.Combine(Environment.CurrentDirectory, ConfigFile));
+            try
+            {
+                var outputPackage = Package(Environment.CurrentDirectory);
+                Console.WriteLine("Successfully created package at {0}.", outputPackage);
+                
+                return 0;
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Error packaging.");
+                Console.Error.WriteLine(e.ToString());
+                return 1;
+            }
+        }
+
+        public static string Package(string directory)
+        {
+            var config = ConfigModel.FromFile(Path.Combine(directory, ConfigFile));
 
             if (config.GitPackages.Count == 0)
             {
@@ -23,7 +40,6 @@ namespace Packer
             }
 
             var tempDir = GetTempDirectory();
-            var exitCode = 0;
             
             try
             {
@@ -32,18 +48,12 @@ namespace Packer
                     CloneRepo(dependency.CloneUrl, Path.Combine(tempDir, dependency.CloneDir));
                 }
 
-                CreatePackage(tempDir, config);
-            }
-            catch (Exception e)
-            {
-                Console.Error.WriteLine(e.Message);
-                exitCode = 1;
+                return CreatePackage(tempDir, config);
             }
             finally
             {
                 RemoveReadOnlyAttribute(tempDir);
                 Directory.Delete(tempDir, true);
-                Environment.Exit(exitCode);
             }
         }
 
@@ -54,7 +64,7 @@ namespace Packer
             return tempDirPath;
         }
 
-        private static void CreatePackage(string tempDir, ConfigModel config)
+        private static string CreatePackage(string tempDir, ConfigModel config)
         {
             var packageName = Path.Combine(Environment.CurrentDirectory, $"{config.PackageName}-{config.Version}.zip");
 
@@ -70,6 +80,8 @@ namespace Packer
 
                 AddToArchiveRecursive(archive, tempDir, blackList, tempDir.Length + 1);
             }
+
+            return packageName;
         }
 
         private static void AddToArchiveRecursive(ZipArchive archive, string path, HashSet<string> blackList,
