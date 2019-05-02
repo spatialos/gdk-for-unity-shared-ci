@@ -21,7 +21,7 @@ source "$(dirname "$0")/pinned-tools.sh"
 echo "Building for: ${WORKER_TYPE} ${BUILD_TARGET} ${SCRIPTING_TYPE}"
 
 pushd "$(dirname "$0")/../"
-  if [[ ${WORKER_TYPE} == "AndroidClient" ]]; then
+  if [ ${WORKER_TYPE} == "AndroidClient" ] || [ ${WORKER_TYPE} == "MobileClient" ]; then
       scripts/prepare-unity-mobile.sh "$(pwd)/../logs/PrepareUnityMobile.log"
   fi
 
