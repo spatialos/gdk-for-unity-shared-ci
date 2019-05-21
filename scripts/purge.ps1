@@ -6,6 +6,10 @@
 #
 # The expected usage is as follows:
 #   powershell -NoProfile -NonInteractive scripts/purge.ps1 -projectRoot <project root>
+param
+(
+  [string]$projectRoot
+)
 
 cd $projectRoot
 

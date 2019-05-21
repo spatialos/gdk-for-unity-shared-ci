@@ -35,5 +35,4 @@ pushd "$(dirname "$0")/../"
   LOG_LOCATION="$(pwd)/../logs/${WORKER_TYPE}-${BUILD_TARGET}-${SCRIPTING_TYPE}.log"
 
   scripts/build.sh "$(pwd)/../workers/unity" ${WORKER_TYPE} ${BUILD_TARGET} ${SCRIPTING_TYPE} "${LOG_LOCATION}"
-  spatial prepare-for-run
 popd
