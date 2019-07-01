@@ -31,7 +31,9 @@ namespace ReleaseTool
 
             [Option('g', "update-gdk", HelpText = "The git hash of the version of the gdk to upgrade to. (Only if this is a project).")]
             public string GdkVersion { get; set; }
-            
+
+            public string GitRepoName { get; set; }
+
             [Option('u', "unattended", HelpText = "Whether to run in unattended mode.")]
             public bool IsUnattended { get; set; }
 
@@ -40,6 +42,8 @@ namespace ReleaseTool
             public string DevBranch { get; set; }
 
             public string MasterBranch { get; set; }
+            
+            public string GithubUser { get; set; }
 
             public string GitHubTokenFile { get; set; }
             

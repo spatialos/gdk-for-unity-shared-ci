@@ -19,7 +19,7 @@ namespace ReleaseTool
             
             File.WriteAllText(GdkPinnedFilename, gdkVersion);
 
-            gitClient.StageFile(GdkPinnedFilename, UriKind.Relative);
+            gitClient.StageFile(GdkPinnedFilename);
         }
 
         public static string GetReleaseBranchName(string version)

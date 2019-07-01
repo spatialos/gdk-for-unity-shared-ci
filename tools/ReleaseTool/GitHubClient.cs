@@ -64,7 +64,10 @@ namespace ReleaseTool
                 throw new ArgumentException($"Failed to parse remote {remote}. Not a valid github repository.");
             }
 
-            var repositoryTask = octoClient.Repository.Get(matches.Groups[1].Value, matches.Groups[2].Value);
+            var owner = matches.Groups[1].Value;
+            var repo = matches.Groups[2].Value;
+
+            var repositoryTask = octoClient.Repository.Get(owner, repo);
 
             return repositoryTask.Result;
         }

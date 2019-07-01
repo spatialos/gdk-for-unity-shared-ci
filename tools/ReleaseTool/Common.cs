@@ -5,6 +5,9 @@ namespace ReleaseTool
 {
     internal static class Common
     {
+        public const string SpatialOsOrg = "spatialos";
+        public const string RemoteUrlTemplate = "git@github.com:{0}/{1}.git";
+        
         public static string ReplaceHomePath(string originalPath)
         {
             if (!originalPath.StartsWith("~"))

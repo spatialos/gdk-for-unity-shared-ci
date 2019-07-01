@@ -33,7 +33,7 @@ namespace ReleaseTool
         private const string ChangeLogUpdateGdkTemplate = "- Upgraded to GDK for Unity version `{0}`";
 
         private const string PullRequestTemplate = "Release {0} - Pre-Validation";
-
+        
         [Verb("prep", HelpText = "Prep a release candidate branch.")]
         public class Options: GitClient.IGitOptions, GitHubClient.IGitHubOptions
         {
@@ -48,7 +48,9 @@ namespace ReleaseTool
 
             [Option('d', "override-date", HelpText = "Override the date of the release. Leave blank to use the current date.")]
             public DateTime? OverrideDate { get; set; }
-            
+
+            public string GitRepoName { get; set; }
+
             [Option('u', "unattended", HelpText = "Whether to run in unattended mode.")]
             public bool IsUnattended { get; set; }
             
@@ -57,6 +59,8 @@ namespace ReleaseTool
             public string DevBranch { get; set; }
 
             public string MasterBranch { get; set; }
+            
+            public string GithubUser { get; set; }
 
             public string GitHubTokenFile { get; set; }
             
@@ -72,21 +76,22 @@ namespace ReleaseTool
 
         public int Run()
         {
-            var gitClient = new GitClient(options);
-            var gitHubClient = new GitHubClient(options);
+            GitClient gitClient = null;
+            
             try
             {
-                if (gitClient.HasStagedOrModifiedFiles())
-                {
-                    throw new InvalidOperationException("The repository currently has files staged, please stash, reset or commit them.");
-                }
-
+                var gitHubClient = new GitHubClient(options);
                 gitHubClient.LoadCredentials();
-                var gitHubRepo = gitHubClient.GetRepositoryFromRemote(gitClient.GetRemoteUrl());
 
-                // Checkout "origin/develop"
-                gitClient.Fetch();
-                gitClient.CheckoutRemoteBranch(options.DevBranch);
+                gitClient = new GitClient(options);
+                
+
+                // Checkout "spatialos:origin/develop"
+                var spatialOSRemote = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, options.GitRepoName);
+                var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOSRemote);
+                gitClient.AddRemote( Common.SpatialOsOrg, spatialOSRemote);
+                gitClient.Fetch(Common.SpatialOsOrg);
+                gitClient.CheckoutRemoteBranch(options.DevBranch, Common.SpatialOsOrg);
 
                 // Create a new branch
                 var branchName = BranchName();
@@ -109,7 +114,7 @@ namespace ReleaseTool
                 }
 
                 // Create pull request
-                var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo, branchName, options.DevBranch,
+                var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo, $"{options.GithubUser}:{branchName}", options.DevBranch,
                     string.Format(PullRequestTemplate, options.Version));
 
                 Logger.Info("Successfully created release!");
@@ -128,7 +133,7 @@ namespace ReleaseTool
             }
             finally
             {
-                gitClient.Dispose();
+                gitClient?.Dispose();
             }
             
             return 0;
@@ -175,7 +180,7 @@ namespace ReleaseTool
 
             File.WriteAllText(packageFile, jsonObject.ToString());
             
-            gitClient.StageFile(packageFile, UriKind.Absolute);
+            gitClient.StageFile(packageFile);
         }
 
         private void UpdateGdkVersion(GitClient gitClient)
@@ -273,7 +278,7 @@ namespace ReleaseTool
 
             File.WriteAllText(ChangeLogFilename, newChangeLog.ToString());
 
-            gitClient.StageFile(ChangeLogFilename, UriKind.Relative);
+            gitClient.StageFile(ChangeLogFilename);
         }
 
         private void UpdatePackerConfig(GitClient gitClient)
@@ -290,7 +295,7 @@ namespace ReleaseTool
             
             config.ToFile(PackerConfigFile);
             
-            gitClient.StageFile(PackerConfigFile, UriKind.Relative);
+            gitClient.StageFile(PackerConfigFile);
         }
 
         private string BranchName()

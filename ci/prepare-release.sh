@@ -19,17 +19,19 @@ GITHUB_SSK_KEY="test-key"
 GDK_VERSION="wow"
 
 docker build \
-	--no-cache \
 	--tag local:gdk-release-tool \
 	--file ./ci/docker/release-tool.Dockerfile \
+	--build-arg SSH_KEY="$(cat ~/.ssh/id_rsa)" \
 	.
 
-docker run local:gdk-release-tool \
-	prep "${RELEASE_VERSION}" \
-	--git-remote=$"git@github.com:improbable/gdk-release-tool-test-repo.git" \
-	--update-gdk="${GDK_VERSION}" \
-	--github-key="${GITHUB_SSK_KEY}" \
-	--unattended
+docker run \
+	local:gdk-release-tool \
+		prep "${RELEASE_VERSION}" \
+		--update-gdk="${GDK_VERSION}" \
+		--github-key-file="github_key" \
+		--github-user="jamiebrynes7" \
+		--git-repository-name="gdk-for-unity" \
+		--unattended
 
 exit 0
 

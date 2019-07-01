@@ -21,10 +21,12 @@ namespace ReleaseTool
 
         private const string GitCommand = "git";
         private const string PushArgumentsTemplate = "push {0} HEAD:refs/heads/{1}";
-        private const string FetchArguments = "fetch";
+        private const string FetchArguments = "fetch {0}";
         private const string PushForceFlag = " -f";
         private const string SquashMergeArgumentsTemplate = "merge --squash {0} -m \"{1}\"";
-
+        private const string CloneArgumentsTemplate = "clone {0} {1}";
+        private const string AddRemoteArgumentsTemplate = "remote add {0} {1}";
+        
         private const string RemoteBranchRefTemplate = "{1}/{0}";
 
         public interface IGitOptions
@@ -38,18 +40,31 @@ namespace ReleaseTool
             [Option("master-branch", Default = DefaultMasterBranch, HelpText = "The master branch.")]
             string MasterBranch { get; set; }
             
+            [Option("github-user", HelpText = "The user account that is using this.", Required = true)]
+            string GithubUser { get; set; }
+
+            [Option("git-repository-name", HelpText = "The Git repository that we are targeting.", Required = true)]
+            string GitRepoName { get; set; }
+            
             bool IsUnattended { get; set; }
         }
 
         private readonly IGitOptions options;
-        private readonly Uri repoDirectory;
         private readonly IRepository repo;
-
+        private readonly string repositoryPath;
+        
         public GitClient(IGitOptions options)
         {
             this.options = options;
-            repoDirectory = new Uri(Common.AppendDirectorySeparator(Directory.GetCurrentDirectory()), UriKind.Absolute);
-            repo = new Repository(repoDirectory.AbsolutePath);
+            
+            var remoteUrl = string.Format(Common.RemoteUrlTemplate, options.GithubUser, options.GitRepoName);
+            
+            repositoryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Directory.CreateDirectory(repositoryPath);
+            Directory.SetCurrentDirectory(repositoryPath);
+            
+            Clone(remoteUrl, repositoryPath);
+            repo = new Repository($"{repositoryPath}/.git/");
         }
 
         public void Dispose()
@@ -63,9 +78,9 @@ namespace ReleaseTool
             Commands.Checkout(repo, branch);
         }
 
-        public void CheckoutRemoteBranch(string branch)
+        public void CheckoutRemoteBranch(string branch, string remote = null)
         {
-            var branchRef = string.Format(RemoteBranchRefTemplate, branch, options.GitRemote);
+            var branchRef = string.Format(RemoteBranchRefTemplate, branch, remote ?? options.GitRemote);
             Logger.Info("Checking out branch... {0}", branchRef);
             Commands.Checkout(repo, branchRef);
         }
@@ -76,18 +91,16 @@ namespace ReleaseTool
             return repoStatus.IsDirty;
         }
 
-        public void StageFile(string fileName, UriKind uriKind)
+        public void StageFile(string filePath)
         {
-            Logger.Info("Staging... {0}", fileName);
-            
-            var fileUri = new Uri(fileName, uriKind);
+            Logger.Info("Staging... {0}", filePath);
 
-            if (fileUri.IsAbsoluteUri)
+            if (!Path.IsPathRooted(filePath))
             {
-                fileUri = repoDirectory.MakeRelativeUri(fileUri);
+                filePath = Path.Combine(repositoryPath, filePath);
             }
             
-            Commands.Stage(repo, fileUri.ToString());
+            Commands.Stage(repo, filePath);
         }
 
         public void Commit(string commitMessage)
@@ -98,11 +111,11 @@ namespace ReleaseTool
             repo.Commit(commitMessage, signature, signature, new CommitOptions { AllowEmptyCommit = true });
         }
 
-        public void Fetch()
+        public void Fetch(string remote = null)
         {
             Logger.Info("Fetching from remote...");
 
-            RunGitCommand("fetch", FetchArguments);
+            RunGitCommand("fetch", string.Format(FetchArguments, remote ?? options.GitRemote));
         }
 
         public void Push(string remoteBranchName)
@@ -134,6 +147,18 @@ namespace ReleaseTool
             RunGitCommand("squash merge", squashMergeArguments);
         }
         
+        public void AddRemote(string name, string remoteUrl)
+        {
+            Logger.Info($"Adding remote {remoteUrl} as {name}...");
+            RunGitCommand("add remote", string.Format(AddRemoteArgumentsTemplate, name, remoteUrl));
+        }
+
+        private void Clone(string remoteUrl, string targetDirectory)
+        {
+            Logger.Info($"Cloning {remoteUrl} into {targetDirectory}...");
+            RunGitCommand("clone repository", string.Format(CloneArgumentsTemplate, remoteUrl, $"\"{targetDirectory}\""));
+        }
+
         private void RunGitCommand(string description, string arguments)
         {
             while (true)
@@ -143,7 +168,8 @@ namespace ReleaseTool
 
                 var process = Process.Start(new ProcessStartInfo(GitCommand, arguments)
                 {
-                    UseShellExecute = false
+                    UseShellExecute = false,
+                    WorkingDirectory = repositoryPath
                 });
 
                 process.WaitForExit();
