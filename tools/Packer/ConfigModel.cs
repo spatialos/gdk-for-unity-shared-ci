@@ -11,6 +11,15 @@ namespace Packer
         public string Version;
         public List<GitPackage> GitPackages = new List<GitPackage>();
 
+        private static JsonSerializerSettings settings = new JsonSerializerSettings
+        {
+            ContractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new SnakeCaseNamingStrategy()
+            },
+            Formatting = Formatting.Indented
+        };
+
         public class GitPackage
         {
             public string CloneUrl;
@@ -20,20 +29,12 @@ namespace Packer
 
         public static ConfigModel FromFile(string path)
         {
-            var settings = new JsonSerializerSettings
-            {
-                ContractResolver = new DefaultContractResolver
-                {
-                    NamingStrategy = new SnakeCaseNamingStrategy()
-                }
-            };
-
             return JsonConvert.DeserializeObject<ConfigModel>(File.ReadAllText(path), settings);
         }
 
         public void ToFile(string path)
         {
-            File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
+            File.WriteAllText(path, JsonConvert.SerializeObject(this, settings));
         }
     }
 }

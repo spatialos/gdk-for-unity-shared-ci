@@ -84,7 +84,6 @@ namespace ReleaseTool
                 gitHubClient.LoadCredentials();
 
                 gitClient = new GitClient(options);
-                
 
                 // Checkout "spatialos:origin/develop"
                 var spatialOSRemote = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, options.GitRepoName);
