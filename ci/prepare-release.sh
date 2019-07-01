@@ -19,12 +19,14 @@ GITHUB_SSK_KEY="test-key"
 GDK_VERSION="wow"
 
 docker build \
+	--no-cache \
 	--tag local:gdk-release-tool \
 	--file ./ci/docker/release-tool.Dockerfile \
 	.
 
 docker run local:gdk-release-tool \
 	prep "${RELEASE_VERSION}" \
+	--git-remote=$"git@github.com:improbable/gdk-release-tool-test-repo.git" \
 	--update-gdk="${GDK_VERSION}" \
 	--github-key="${GITHUB_SSK_KEY}" \
 	--unattended
