@@ -33,7 +33,7 @@ namespace ReleaseTool
 
         public GitHubClient(IGitHubOptions options)
         {
-            this.octoClient = new OctoClient(ProductHeader);
+            octoClient = new OctoClient(ProductHeader);
             this.options = options;
         }
             
@@ -80,19 +80,16 @@ namespace ReleaseTool
             return createPullRequestTask.Result;
         }
 
-        public bool RemoveAdminBranchEnforcement(Repository repository, string branch)
+        public PullRequestMerge MergePullRequest(Repository repository, int pullRequestId)
         {
-            var removeAdminBranchEnforcementTask = octoClient.Repository.Branch.RemoveAdminEnforcement(repository.Id, branch);
-            return removeAdminBranchEnforcementTask.Result;
-        }
-
-        public void AddAdminBranchEnforcement(Repository repository, string branch)
-        {
-            var addAdminBranchEnforcementTask = octoClient.Repository.Branch.AddAdminEnforcement(repository.Id, branch);
-            if (!addAdminBranchEnforcementTask.Result.Enabled)
+            var mergePullRequest = new MergePullRequest
             {
-                throw new InvalidOperationException($"Failed to add admin branch enforcement from branch {branch}");
-            }
+                MergeMethod = PullRequestMergeMethod.Squash
+            };
+
+            var mergePullRequestTask = octoClient.PullRequest.Merge(repository.Id, pullRequestId, mergePullRequest);
+
+            return mergePullRequestTask.Result;
         }
 
         public Release CreateDraftRelease(Repository repository, string tag, string body, string name, string commitish)

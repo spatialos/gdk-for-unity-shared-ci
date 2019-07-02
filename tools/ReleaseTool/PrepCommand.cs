@@ -19,6 +19,8 @@ namespace ReleaseTool
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
         
+        private const string DevelopBranch = "develop";
+
         private const string PackerConfigFile = "packer.config.json";
         
         private const string PackageJsonFilename = "package.json";
@@ -35,7 +37,7 @@ namespace ReleaseTool
         private const string PullRequestTemplate = "Release {0} - Pre-Validation";
         
         [Verb("prep", HelpText = "Prep a release candidate branch.")]
-        public class Options: GitClient.IGitOptions, GitHubClient.IGitHubOptions
+        public class Options: GitHubClient.IGitHubOptions
         {
             [Value(0, MetaName = "version", HelpText = "The release version that is being cut.", Required = true)]
             public string Version { get; set; }
@@ -45,20 +47,13 @@ namespace ReleaseTool
 
             [Option('d', "override-date", HelpText = "Override the date of the release. Leave blank to use the current date.")]
             public DateTime? OverrideDate { get; set; }
-
-            #region IGitOptions implementation
-
-            public string GitRemote { get; set; }
-
-            public string DevBranch { get; set; }
-
-            public string MasterBranch { get; set; }
             
+            // TODO: Once we have a robots account - set this to default robot account.
+            [Option("github-user", HelpText = "The user account that is using this.", Required = true)]
             public string GithubUser { get; set; }
-            
-            public string GitRepoName { get; set; }
 
-            #endregion
+            [Option("git-repository-name", HelpText = "The Git repository that we are targeting.", Required = true)]
+            public string GitRepoName { get; set; }
 
             #region IGithubOptions implementation
 
@@ -88,12 +83,14 @@ namespace ReleaseTool
          */
         public int Run()
         {
+            var remoteUrl = string.Format(Common.RemoteUrlTemplate, options.GithubUser, options.GitRepoName);
+            
             try
             {
                 var gitHubClient = new GitHubClient(options);
                 gitHubClient.LoadCredentials();
 
-                using (var gitClient = GitClient.CreateRepo(options))
+                using (var gitClient = GitClient.FromRemote(remoteUrl))
                 {
                     // This does step 2 from above.
                     var spatialOsRemote = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, options.GitRepoName);
@@ -101,7 +98,7 @@ namespace ReleaseTool
                     gitClient.Fetch(Common.SpatialOsOrg);
                 
                     // This does step 3 from above.
-                    gitClient.CheckoutRemoteBranch(options.DevBranch, Common.SpatialOsOrg);
+                    gitClient.CheckoutRemoteBranch(DevelopBranch, Common.SpatialOsOrg);
 
                     // This does step 4 from above.
                     using (new Common.WorkingDirectoryScope(gitClient.RepositoryPath))
@@ -119,7 +116,8 @@ namespace ReleaseTool
 
                     // This does step 6 from above.
                     var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOsRemote);
-                    var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo, $"{options.GithubUser}:{branchName}", options.DevBranch,
+                    var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo, 
+                        $"{options.GithubUser}:{branchName}", DevelopBranch,
                         string.Format(PullRequestTemplate, options.Version));
 
                     Logger.Info("Successfully created release!");
