@@ -35,24 +35,7 @@ namespace ReleaseTool
         {
             octoClient = new OctoClient(ProductHeader);
             this.options = options;
-        }
-            
-        public void LoadCredentials()
-        {
-            if (!string.IsNullOrEmpty(options.GitHubToken))
-            {
-                octoClient.Credentials = new Credentials(options.GitHubToken);
-            }
-            else
-            {
-                if (!File.Exists(options.GitHubTokenFile))
-                {
-                    throw new ArgumentException("Failed to get GitHub Token as the file specified does not exist.");
-                }
-                
-                octoClient.Credentials = new Credentials(File.ReadAllText(
-                    Common.ReplaceHomePath(options.GitHubTokenFile)));
-            }
+            LoadCredentials();
         }
 
         public Repository GetRepositoryFromRemote(string remote)
@@ -109,6 +92,24 @@ namespace ReleaseTool
         {
             var uploadAssetTask = octoClient.Repository.Release.UploadAsset(release, new ReleaseAssetUpload(fileName, contentType, data, null));
             return uploadAssetTask.Result;
+        }
+        
+        private void LoadCredentials()
+        {
+            if (!string.IsNullOrEmpty(options.GitHubToken))
+            {
+                octoClient.Credentials = new Credentials(options.GitHubToken);
+            }
+            else
+            {
+                if (!File.Exists(options.GitHubTokenFile))
+                {
+                    throw new ArgumentException("Failed to get GitHub Token as the file specified does not exist.");
+                }
+                
+                octoClient.Credentials = new Credentials(File.ReadAllText(
+                    Common.ReplaceHomePath(options.GitHubTokenFile)));
+            }
         }
     }
 }

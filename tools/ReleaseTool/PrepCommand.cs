@@ -1,6 +1,5 @@
 ﻿using CommandLine;
 using Newtonsoft.Json.Linq;
-using Octokit;
 using System;
 using System.IO;
 using System.Text;
@@ -18,8 +17,6 @@ namespace ReleaseTool
     internal class PrepCommand
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-        
-        private const string DevelopBranch = "develop";
 
         private const string PackerConfigFile = "packer.config.json";
         
@@ -33,6 +30,7 @@ namespace ReleaseTool
         private const string ChangeLogFilename = "CHANGELOG.md";
         private const string ChangeLogReleaseHeadingTemplate = "## `{0}` - {1:yyyy-MM-dd}";
         private const string ChangeLogUpdateGdkTemplate = "- Upgraded to GDK for Unity version `{0}`";
+        private const string ReleaseBranchNameTemplate = "feature/release-{0}";
 
         private const string PullRequestTemplate = "Release {0} - Pre-Validation";
         
@@ -45,9 +43,6 @@ namespace ReleaseTool
             [Option('g', "update-pinned-gdk", HelpText = "The git hash of the version of the gdk to upgrade to. (Only if this is a project).")]
             public string PinnedGdkVersion { get; set; }
 
-            [Option('d', "override-date", HelpText = "Override the date of the release. Leave blank to use the current date.")]
-            public DateTime? OverrideDate { get; set; }
-            
             // TODO: Once we have a robots account - set this to default robot account.
             [Option("github-user", HelpText = "The user account that is using this.", Required = true)]
             public string GithubUser { get; set; }
@@ -88,7 +83,6 @@ namespace ReleaseTool
             try
             {
                 var gitHubClient = new GitHubClient(options);
-                gitHubClient.LoadCredentials();
 
                 using (var gitClient = GitClient.FromRemote(remoteUrl))
                 {
@@ -98,7 +92,7 @@ namespace ReleaseTool
                     gitClient.Fetch(Common.SpatialOsOrg);
                 
                     // This does step 3 from above.
-                    gitClient.CheckoutRemoteBranch(DevelopBranch, Common.SpatialOsOrg);
+                    gitClient.CheckoutRemoteBranch(Common.DevelopBranch, Common.SpatialOsOrg);
 
                     // This does step 4 from above.
                     using (new Common.WorkingDirectoryScope(gitClient.RepositoryPath))
@@ -110,14 +104,14 @@ namespace ReleaseTool
                     }
 
                     // This does step 5 from above.
-                    var branchName = CommandsCommon.GetReleaseBranchName(options.Version);
+                    var branchName = string.Format(ReleaseBranchNameTemplate, options.Version);
                     gitClient.Commit(string.Format(CommitMessageTemplate, options.Version));
                     gitClient.Push(branchName);
 
                     // This does step 6 from above.
                     var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOsRemote);
                     var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo, 
-                        $"{options.GithubUser}:{branchName}", DevelopBranch,
+                        $"{options.GithubUser}:{branchName}", Common.DevelopBranch,
                         string.Format(PullRequestTemplate, options.Version));
 
                     Logger.Info("Successfully created release!");
@@ -185,9 +179,7 @@ namespace ReleaseTool
                 return;
             }
 
-            Logger.Info("Updating gdk version, {0}...", CommandsCommon.GdkPinnedFilename);
-            
-            CommandsCommon.UpdateGdkVersion(gitClient, options.PinnedGdkVersion);
+            UpdateGdkVersion(gitClient, options.PinnedGdkVersion);
         }
 
         /**
@@ -210,8 +202,6 @@ namespace ReleaseTool
             var isInChangedBulletPoints = false;
             var shouldUpdateGdkVersion = ShouldUpdateGdkVersion();
 
-            var releaseDate = options.OverrideDate ?? DateTime.Now;
-
             using (var reader = new StreamReader(ChangeLogFilename))
             {
                 while (!reader.EndOfStream)
@@ -222,7 +212,7 @@ namespace ReleaseTool
                     {
                         newChangeLog.AppendLine(line);
                         newChangeLog.AppendLine(string.Empty);
-                        newChangeLog.AppendLine(string.Format(ChangeLogReleaseHeadingTemplate, options.Version, releaseDate));
+                        newChangeLog.AppendLine(string.Format(ChangeLogReleaseHeadingTemplate, options.Version, DateTime.Now));
 
                         hasReplacedUnreleased = true;
                         continue;
@@ -296,6 +286,23 @@ namespace ReleaseTool
         private bool ShouldUpdateGdkVersion()
         {
             return !string.IsNullOrEmpty(options.PinnedGdkVersion);
+        }
+
+        private static void UpdateGdkVersion(GitClient gitClient, string newPinnedVersion)
+        {
+            const string gdkPinnedFilename = "gdk.pinned";
+            
+            Logger.Info("Updating pinned gdk version to {0}...", newPinnedVersion);
+            
+            if (!File.Exists(gdkPinnedFilename))
+            {
+                throw new InvalidOperationException("Could not upgrade gdk version as the file, " +
+                    $"{gdkPinnedFilename}, does not exist");
+            }
+            
+            File.WriteAllText(gdkPinnedFilename, newPinnedVersion);
+
+            gitClient.StageFile(gdkPinnedFilename);
         }
     }
 }

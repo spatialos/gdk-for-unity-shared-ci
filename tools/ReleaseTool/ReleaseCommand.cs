@@ -18,7 +18,6 @@ namespace ReleaseTool
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
         
-        private const string DevelopBranch = "develop";
         private const string PackageContentType = "application/zip";
         private const string ChangeLogFilename = "CHANGELOG.md";
 
@@ -56,7 +55,6 @@ namespace ReleaseTool
             try
             {
                 var gitHubClient = new GitHubClient(options);
-                gitHubClient.LoadCredentials();
 
                 var (repoName, pullRequestId) = ExtractPullRequestInfo(options.PullRequestUrl);
                 
@@ -77,7 +75,7 @@ namespace ReleaseTool
                 {
                     // Create release
                     gitClient.Fetch();
-                    gitClient.CheckoutRemoteBranch(DevelopBranch);
+                    gitClient.CheckoutRemoteBranch(Common.DevelopBranch);
                     var release = CreateRelease(gitHubClient, gitHubRepo, gitClient);
 
                     Logger.Info("Release Successful!");
