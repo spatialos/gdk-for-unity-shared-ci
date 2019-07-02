@@ -40,20 +40,14 @@ namespace ReleaseTool
             [Value(0, MetaName = "version", HelpText = "The release version that is being cut.", Required = true)]
             public string Version { get; set; }
 
-            [Option('g', "update-gdk", HelpText = "The git hash of the version of the gdk to upgrade to. (Only if this is a project).")]
-            public string GdkVersion { get; set; }
-
-            [Option('f', "force", HelpText = "Force create a new branch (delete the old if it exists).")]
-            public bool Force { get; set; }
+            [Option('g', "update-pinned-gdk", HelpText = "The git hash of the version of the gdk to upgrade to. (Only if this is a project).")]
+            public string PinnedGdkVersion { get; set; }
 
             [Option('d', "override-date", HelpText = "Override the date of the release. Leave blank to use the current date.")]
             public DateTime? OverrideDate { get; set; }
 
-            public string GitRepoName { get; set; }
+            #region IGitOptions implementation
 
-            [Option('u', "unattended", HelpText = "Whether to run in unattended mode.")]
-            public bool IsUnattended { get; set; }
-            
             public string GitRemote { get; set; }
 
             public string DevBranch { get; set; }
@@ -61,10 +55,18 @@ namespace ReleaseTool
             public string MasterBranch { get; set; }
             
             public string GithubUser { get; set; }
+            
+            public string GitRepoName { get; set; }
+
+            #endregion
+
+            #region IGithubOptions implementation
 
             public string GitHubTokenFile { get; set; }
             
             public string GitHubToken { get; set; }
+
+            #endregion
         }
 
         private readonly Options options;
@@ -73,56 +75,56 @@ namespace ReleaseTool
         {
             this.options = options;
         }
-
+        
+        /*
+         *     This tool is designed to be used with a robot Github account which has its own fork of the GDK
+         *     repositories. This means that when we prep a release:
+         *         1. Checkout our fork of the repo.
+         *         2. Add the spatialos org remote to our local copy and fetch this remote.
+         *         3. Checkout the spatialos/develop branch (the non-forked develop branch).
+         *         4. Make the changes for prepping the release.
+         *         5. Push this to an RC branch on the forked repository.
+         *         6. Open a PR from the fork into the source repository.
+         */
         public int Run()
         {
-            GitClient gitClient = null;
-            
             try
             {
                 var gitHubClient = new GitHubClient(options);
                 gitHubClient.LoadCredentials();
 
-                gitClient = new GitClient(options);
-
-                // Checkout "spatialos:origin/develop"
-                var spatialOSRemote = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, options.GitRepoName);
-                var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOSRemote);
-                gitClient.AddRemote( Common.SpatialOsOrg, spatialOSRemote);
-                gitClient.Fetch(Common.SpatialOsOrg);
-                gitClient.CheckoutRemoteBranch(options.DevBranch, Common.SpatialOsOrg);
-
-                // Create a new branch
-                var branchName = BranchName();
-
-                // Make Changes
-                UpdateAllPackageJsons(gitClient);
-                UpdateGdkVersion(gitClient);
-                UpdateChangeLog(gitClient);
-                UpdatePackerConfig(gitClient);
-
-                // Push to origin
-                gitClient.Commit(string.Format(CommitMessageTemplate, options.Version));
-                if (options.Force)
+                using (var gitClient = GitClient.CreateRepo(options))
                 {
-                    gitClient.ForcePush(branchName);
-                }
-                else
-                {
+                    // This does step 2 from above.
+                    var spatialOsRemote = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, options.GitRepoName);
+                    gitClient.AddRemote( Common.SpatialOsOrg, spatialOsRemote);
+                    gitClient.Fetch(Common.SpatialOsOrg);
+                
+                    // This does step 3 from above.
+                    gitClient.CheckoutRemoteBranch(options.DevBranch, Common.SpatialOsOrg);
+
+                    // This does step 4 from above.
+                    using (new Common.WorkingDirectoryScope(gitClient.RepositoryPath))
+                    {         
+                        UpdateAllPackageJsons(gitClient);
+                        UpdateGdkVersion(gitClient);
+                        UpdateChangeLog(gitClient);
+                        UpdatePackerConfig(gitClient);
+                    }
+
+                    // This does step 5 from above.
+                    var branchName = CommandsCommon.GetReleaseBranchName(options.Version);
+                    gitClient.Commit(string.Format(CommitMessageTemplate, options.Version));
                     gitClient.Push(branchName);
-                }
 
-                // Create pull request
-                var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo, $"{options.GithubUser}:{branchName}", options.DevBranch,
-                    string.Format(PullRequestTemplate, options.Version));
+                    // This does step 6 from above.
+                    var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOsRemote);
+                    var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo, $"{options.GithubUser}:{branchName}", options.DevBranch,
+                        string.Format(PullRequestTemplate, options.Version));
 
-                Logger.Info("Successfully created release!");
-                Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
-                Logger.Info("Pull request available: {0}", pullRequest.HtmlUrl);
-
-                if (!options.IsUnattended)
-                {
-                    System.Diagnostics.Process.Start(pullRequest.HtmlUrl);
+                    Logger.Info("Successfully created release!");
+                    Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
+                    Logger.Info("Pull request available: {0}", pullRequest.HtmlUrl);
                 }
             }
             catch (Exception e)
@@ -130,11 +132,7 @@ namespace ReleaseTool
                 Logger.Error(e, "ERROR: Unable to prep release candidate branch. Error: {0}", e);
                 return 1;
             }
-            finally
-            {
-                gitClient?.Dispose();
-            }
-            
+
             return 0;
         }
 
@@ -191,7 +189,7 @@ namespace ReleaseTool
 
             Logger.Info("Updating gdk version, {0}...", CommandsCommon.GdkPinnedFilename);
             
-            CommandsCommon.UpdateGdkVersion(gitClient, options.GdkVersion);
+            CommandsCommon.UpdateGdkVersion(gitClient, options.PinnedGdkVersion);
         }
 
         /**
@@ -297,14 +295,9 @@ namespace ReleaseTool
             gitClient.StageFile(PackerConfigFile);
         }
 
-        private string BranchName()
-        {
-            return CommandsCommon.GetReleaseBranchName(options.Version);
-        }
-
         private bool ShouldUpdateGdkVersion()
         {
-            return !string.IsNullOrEmpty(options.GdkVersion);
+            return !string.IsNullOrEmpty(options.PinnedGdkVersion);
         }
     }
 }

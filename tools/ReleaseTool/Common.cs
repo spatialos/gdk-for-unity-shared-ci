@@ -43,5 +43,21 @@ namespace ReleaseTool
 
             return originalPath + directorySeparator;
         }
+
+        public class WorkingDirectoryScope : IDisposable
+        {
+            private string oldWorkingDirectory;
+            
+            public WorkingDirectoryScope(string newWorkingDirectory)
+            {
+                oldWorkingDirectory = Environment.CurrentDirectory;
+                Environment.CurrentDirectory = newWorkingDirectory;
+            }
+
+            public void Dispose()
+            {
+                Environment.CurrentDirectory = oldWorkingDirectory;
+            }
+        }
     }
 }

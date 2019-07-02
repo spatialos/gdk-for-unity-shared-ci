@@ -59,6 +59,7 @@ namespace ReleaseTool
 
         public int Run()
         {
+            /*
             var gitClient = new GitClient(options);
             var gitHubClient = new GitHubClient(options);
 
@@ -140,6 +141,7 @@ namespace ReleaseTool
             {
                 gitClient.Dispose();
             }
+            */
 
             return 0;
         }

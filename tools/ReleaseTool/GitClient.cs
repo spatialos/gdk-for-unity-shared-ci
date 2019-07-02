@@ -22,7 +22,6 @@ namespace ReleaseTool
         private const string GitCommand = "git";
         private const string PushArgumentsTemplate = "push {0} HEAD:refs/heads/{1}";
         private const string FetchArguments = "fetch {0}";
-        private const string PushForceFlag = " -f";
         private const string SquashMergeArgumentsTemplate = "merge --squash {0} -m \"{1}\"";
         private const string CloneArgumentsTemplate = "clone {0} {1}";
         private const string AddRemoteArgumentsTemplate = "remote add {0} {1}";
@@ -45,37 +44,34 @@ namespace ReleaseTool
 
             [Option("git-repository-name", HelpText = "The Git repository that we are targeting.", Required = true)]
             string GitRepoName { get; set; }
-            
-            bool IsUnattended { get; set; }
         }
+
+        public string RepositoryPath { get; }
 
         private readonly IGitOptions options;
         private readonly IRepository repo;
-        private readonly string repositoryPath;
-        
-        public GitClient(IGitOptions options)
+
+        public static GitClient CreateRepo(IGitOptions options)
         {
-            this.options = options;
-            
             var remoteUrl = string.Format(Common.RemoteUrlTemplate, options.GithubUser, options.GitRepoName);
             
-            repositoryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            var repositoryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(repositoryPath);
-            Directory.SetCurrentDirectory(repositoryPath);
-            
             Clone(remoteUrl, repositoryPath);
+            
+            return new GitClient(options, repositoryPath);
+        }
+        
+        private GitClient(IGitOptions options, string repositoryPath)
+        {
+            this.options = options;
+            RepositoryPath = repositoryPath;
             repo = new Repository($"{repositoryPath}/.git/");
         }
 
         public void Dispose()
         {
             repo?.Dispose();
-        }
-
-        public void Checkout(Branch branch)
-        {
-            Logger.Info("Checking out branch... {0}", branch.FriendlyName);
-            Commands.Checkout(repo, branch);
         }
 
         public void CheckoutRemoteBranch(string branch, string remote = null)
@@ -97,7 +93,7 @@ namespace ReleaseTool
 
             if (!Path.IsPathRooted(filePath))
             {
-                filePath = Path.Combine(repositoryPath, filePath);
+                filePath = Path.Combine(RepositoryPath, filePath);
             }
             
             Commands.Stage(repo, filePath);
@@ -115,7 +111,7 @@ namespace ReleaseTool
         {
             Logger.Info("Fetching from remote...");
 
-            RunGitCommand("fetch", string.Format(FetchArguments, remote ?? options.GitRemote));
+            RunGitCommand("fetch", string.Format(FetchArguments, remote ?? options.GitRemote), RepositoryPath);
         }
 
         public void Push(string remoteBranchName)
@@ -124,17 +120,7 @@ namespace ReleaseTool
 
             var pushArguments = string.Format(PushArgumentsTemplate, options.GitRemote, remoteBranchName);
 
-            RunGitCommand("push branch", pushArguments);
-        }
-
-        public void ForcePush(string remoteBranchName)
-        {
-            Logger.Info("Force Pushing to remote...");
-
-            var pushArguments = string.Format(PushArgumentsTemplate, options.GitRemote, remoteBranchName);
-            pushArguments += PushForceFlag;
-
-            RunGitCommand("force push branch", pushArguments);
+            RunGitCommand("push branch", pushArguments, RepositoryPath);
         }
 
         public void SquashMerge(Commit commit, string mergeCommitMessage)
@@ -144,72 +130,50 @@ namespace ReleaseTool
             var squashMergeArguments = string.Format(SquashMergeArgumentsTemplate, commit.Sha,
                 mergeCommitMessage);
             
-            RunGitCommand("squash merge", squashMergeArguments);
+            RunGitCommand("squash merge", squashMergeArguments, RepositoryPath);
         }
         
         public void AddRemote(string name, string remoteUrl)
         {
             Logger.Info($"Adding remote {remoteUrl} as {name}...");
-            RunGitCommand("add remote", string.Format(AddRemoteArgumentsTemplate, name, remoteUrl));
+            RunGitCommand("add remote", string.Format(AddRemoteArgumentsTemplate, name, remoteUrl), RepositoryPath);
         }
 
-        private void Clone(string remoteUrl, string targetDirectory)
+        private static void Clone(string remoteUrl, string targetDirectory)
         {
             Logger.Info($"Cloning {remoteUrl} into {targetDirectory}...");
             RunGitCommand("clone repository", string.Format(CloneArgumentsTemplate, remoteUrl, $"\"{targetDirectory}\""));
         }
 
-        private void RunGitCommand(string description, string arguments)
+        private static void RunGitCommand(string description, string arguments, string workingDir = null)
         {
-            while (true)
+            Logger.Debug("Attempting to {0}. Running command [{1} {2}]", description, 
+                GitCommand, arguments);
+
+            var procInfo = new ProcessStartInfo(GitCommand, arguments)
             {
-                Logger.Debug("Attempting to {0}. Running command [{1} {2}]", description, 
-                    GitCommand, arguments);
+                UseShellExecute = false,
+            };
+            
+            if (workingDir != null)
+            {
+                procInfo.WorkingDirectory = workingDir;
+            }
 
-                var process = Process.Start(new ProcessStartInfo(GitCommand, arguments)
+            using (var process = Process.Start(procInfo))
+            {
+                if (process != null)
                 {
-                    UseShellExecute = false,
-                    WorkingDirectory = repositoryPath
-                });
+                    process.WaitForExit();
 
-                process.WaitForExit();
-
-                Console.WriteLine(string.Empty);
-
-                if (process.ExitCode == 0)
-                {
-                    break;
-                }
-
-                if (options.IsUnattended)
-                {
-                    throw new InvalidOperationException($"Failed to {description}.");
-                }
- 
-                var shouldRetry = false;
-
-                while (true)
-                {
-                    Logger.Info($"Failed to {description}. Retry (y/n)?");
-                    var retryInput = Console.ReadLine().ToLower();
-
-                    if (retryInput == "y")
+                    if (process.ExitCode == 0)
                     {
-                        shouldRetry = true;
-                        break;
+                        return;
                     }
-
-                    if (retryInput == "n")
-                    {
-                        break;
-                    }
-                }
-
-                if (!shouldRetry)
-                {
-                    throw new InvalidOperationException($"Failed to {description}.");
                 }
             }
+
+            throw new InvalidOperationException($"Failed to {description}.");
         }
 
         public string GetRemoteUrl()
