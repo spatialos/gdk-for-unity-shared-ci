@@ -121,9 +121,8 @@ function uploadAssembly() {
 
   setAssemblyName "${1}"
 
-  markStartOfBlock "Uploading assembly"
+  echo "Uploading assembly"
   spatial cloud upload "${ASSEMBLY_NAME}" --log_level=debug --force --enable_pre_upload_check=false --project_name="${2}"
-  markEndOfBlock "Uploading assembly"
 }
 
 function isDocsBranch() {
