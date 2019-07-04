@@ -5,6 +5,10 @@ namespace ReleaseTool
 {
     internal static class Common
     {
+        public const string SpatialOsOrg = "spatialos";
+        public const string DevelopBranch = "develop";
+        public const string RemoteUrlTemplate = "git@github.com:{0}/{1}.git";
+        
         public static string ReplaceHomePath(string originalPath)
         {
             if (!originalPath.StartsWith("~"))
@@ -23,7 +27,7 @@ namespace ReleaseTool
         /**
          * This is required as URIs treat paths that do not have a trailing slash as a file rather than a directory.
          */
-        public static string AppendDirectorySeparator(string originalPath)
+        private static string AppendDirectorySeparator(string originalPath)
         {
             var directorySeparator = Path.DirectorySeparatorChar.ToString();
             var altDirectorySeparator = Path.AltDirectorySeparatorChar.ToString();

@@ -1,48 +1,38 @@
-﻿using CommandLine;
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
+using CommandLine;
 using Octokit;
 
 namespace ReleaseTool
 {
     /// <summary>
-    /// Runs the commands required for releasing a candidate.
-    /// * Does a final bump of the gdk.pinned (if needed).
-    /// * Merges the candidate branch into develop.
-    /// * Pushes develop to origin/develop and origin/master.
-    /// * Creates a GitHub release draft.
+    ///     Runs the commands required for releasing a candidate.
+    ///     * Does a final bump of the gdk.pinned (if needed).
+    ///     * Merges the candidate branch into develop.
+    ///     * Pushes develop to origin/develop and origin/master.
+    ///     * Creates a GitHub release draft.
     /// </summary>
     internal class ReleaseCommand
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-        
-        private const string UpdateGdkCommitMessageTemplate = "Update to release commit for Gdk {0}.";
-        private const string MergeCommitMessageTemplate = "Merge release {0}.";
 
         private const string PackageContentType = "application/zip";
         private const string ChangeLogFilename = "CHANGELOG.md";
 
         [Verb("release", HelpText = "Merge a release branch and create a github release draft.")]
-        public class Options: GitClient.IGitOptions, GitHubClient.IGitHubOptions
+        public class Options : GitHubClient.IGitHubOptions
         {
             [Value(0, MetaName = "version", HelpText = "The version that is being released.")]
             public string Version { get; set; }
 
-            [Option('g', "update-gdk", HelpText = "The git hash of the version of the gdk to upgrade to. (Only if this is a project).")]
-            public string GdkVersion { get; set; }
-            
-            [Option('u', "unattended", HelpText = "Whether to run in unattended mode.")]
-            public bool IsUnattended { get; set; }
-
-            public string GitRemote { get; set; }
-
-            public string DevBranch { get; set; }
-
-            public string MasterBranch { get; set; }
+            [Option('u', "pull-request-url", HelpText = "The link to the release candidate branch to merge.",
+                Required = true)]
+            public string PullRequestUrl { get; set; }
 
             public string GitHubTokenFile { get; set; }
-            
+
             public string GitHubToken { get; set; }
         }
 
@@ -53,78 +43,46 @@ namespace ReleaseTool
             this.options = options;
         }
 
+        /*
+         *     This tool is designed to execute most of the physical releasing:
+         *         1. Merge the RC PR into develop.
+         *         2. Draft the release using the changelog notes.
+         *
+         *     Fast-forwarding master up-to-date with develop and publishing the release
+         *     are left up to the release sheriff.
+         */
         public int Run()
         {
-            var gitClient = new GitClient(options);
-            var gitHubClient = new GitHubClient(options);
-
             try
             {
-                if (gitClient.HasStagedOrModifiedFiles())
-                {
-                    throw new InvalidOperationException("The repository currently has files staged, please stash, reset or commit them.");
-                }
+                var gitHubClient = new GitHubClient(options);
 
-                gitHubClient.LoadCredentials();
-                var gitHubRepo = gitHubClient.GetRepositoryFromRemote(gitClient.GetRemoteUrl());
+                var (repoName, pullRequestId) = ExtractPullRequestInfo(options.PullRequestUrl);
 
-                // Checkout "origin/feature/release-X"
-                var branchName = GetBranchName();
-                gitClient.Fetch();
-                gitClient.CheckoutRemoteBranch(branchName);
-
-                // Make Changes if necessary
-                UpdateGdkVersion(gitClient);
+                var spatialOsRemote = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, repoName);
+                var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOsRemote);
 
                 // Merge into develop
-                Logger.Info("Merging {0} into {1}...", branchName, options.DevBranch);
-                var branchCommit = gitClient.GetHeadCommit();
-                gitClient.CheckoutRemoteBranch(options.DevBranch);
-                gitClient.SquashMerge(branchCommit, string.Format(MergeCommitMessageTemplate, options.Version));
+                var mergeResult = gitHubClient.MergePullRequest(gitHubRepo, pullRequestId);
 
-                // Push to develop
-                Logger.Info("Pushing to {0}...", options.DevBranch);
-                var devHasBranchEnforcement = gitHubClient.RemoveAdminBranchEnforcement(gitHubRepo, options.DevBranch);
-                try
+                if (!mergeResult.Merged)
                 {
-                    gitClient.Push(options.DevBranch);
-                }
-                finally
-                {
-                    if (devHasBranchEnforcement)
-                    {
-                        Logger.Info("Re-adding branch protection...");
-                        gitHubClient.AddAdminBranchEnforcement(gitHubRepo, options.DevBranch);
-                    }
+                    throw new InvalidOperationException(
+                        $"Was unable to merge pull request at: {options.PullRequestUrl}. Received error: {mergeResult.Message}");
                 }
 
-                // Push to master
-                Logger.Info("Pushing to {0}...", options.MasterBranch);
-                Logger.Info("Removing branch protection...");
-                var masterHasBranchEnforcement = gitHubClient.RemoveAdminBranchEnforcement(gitHubRepo, options.MasterBranch);
-                try
-                {
-                    gitClient.Push(options.MasterBranch);
-                }
-                finally
-                {
-                    if (masterHasBranchEnforcement)
-                    {
-                        Logger.Info("Re-adding branch protection...");
-                        gitHubClient.AddAdminBranchEnforcement(gitHubRepo, options.MasterBranch);
-                    }
-                }
-                
-                // Create release
-                var release = CreateRelease(gitHubClient, gitHubRepo, gitClient);
+                var remoteUrl = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, repoName);
 
-                Logger.Info("Release Successful!");
-                Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
-                Logger.Info("Draft release: {0}", release.HtmlUrl);
-
-                if (!options.IsUnattended)
+                using (var gitClient = GitClient.FromRemote(remoteUrl))
                 {
-                    System.Diagnostics.Process.Start(release.HtmlUrl);
+                    // Create release
+                    gitClient.Fetch();
+                    gitClient.CheckoutRemoteBranch(Common.DevelopBranch);
+                    var release = CreateRelease(gitHubClient, gitHubRepo, gitClient);
+
+                    Logger.Info("Release Successful!");
+                    Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
+                    Logger.Info("Draft release: {0}", release.HtmlUrl);
                 }
             }
             catch (Exception e)
@@ -132,49 +90,26 @@ namespace ReleaseTool
                 Logger.Error(e, "ERROR: Unable to release candidate branch. Error: {0}", e);
                 return 1;
             }
-            finally
-            {
-                gitClient.Dispose();
-            }
 
             return 0;
         }
 
-        private string GetBranchName()
-        {
-            return CommandsCommon.GetReleaseBranchName(options.Version);
-        }
-
-        private void UpdateGdkVersion(GitClient gitClient)
-        {
-            if (!ShouldUpdateGdkVersion())
-            {
-                return;
-            }
-
-            Logger.Info("Updating gdk version, {0}...", CommandsCommon.GdkPinnedFilename);
-            
-            CommandsCommon.UpdateGdkVersion(gitClient, options.GdkVersion);
-
-            gitClient.Commit(string.Format(UpdateGdkCommitMessageTemplate, options.Version));
-        }
-
-        private bool ShouldUpdateGdkVersion()
-        {
-            return !string.IsNullOrEmpty(options.GdkVersion);
-        }
-
-        private Release CreateRelease(GitHubClient gitHubClient, Octokit.Repository gitHubRepo, GitClient gitClient)
+        private Release CreateRelease(GitHubClient gitHubClient, Repository gitHubRepo, GitClient gitClient)
         {
             Logger.Info("Running packer...");
-            
-            var package = Packer.Program.Package(Environment.CurrentDirectory);
+            var package = Packer.Program.Package(gitClient.RepositoryPath);
 
-            var commitish = gitClient.GetHeadCommit().Sha;
-            
-            var releaseBody = GetReleaseNotesFromChangeLog();
+            var headCommit = gitClient.GetHeadCommit().Sha;
+
+
+            string releaseBody;
+            using (new WorkingDirectoryScope(gitClient.RepositoryPath))
+            {
+                releaseBody = GetReleaseNotesFromChangeLog();
+            }
+
             var release = gitHubClient.CreateDraftRelease(gitHubRepo, options.Version, releaseBody, options.Version,
-                commitish);
+                headCommit);
 
             using (var reader = File.OpenRead(package))
             {
@@ -184,12 +119,40 @@ namespace ReleaseTool
             return release;
         }
 
+        private static (string, int) ExtractPullRequestInfo(string pullRequestUrl)
+        {
+            const string regexString = "github\\.com\\/spatialos\\/(.*)\\/pull\\/([0-9]*)";
+
+            var match = Regex.Match(pullRequestUrl, regexString);
+
+            if (!match.Success)
+            {
+                throw new ArgumentException($"Malformed pull request url: {pullRequestUrl}");
+            }
+
+            if (match.Groups.Count < 3)
+            {
+                throw new ArgumentException($"Malformed pull request url: {pullRequestUrl}");
+            }
+
+            var repoName = match.Groups[1].Value;
+            var pullRequestIdStr = match.Groups[2].Value;
+
+            if (!int.TryParse(pullRequestIdStr, out int pullRequestId))
+            {
+                throw new Exception(
+                    $"Parsing pull request URL failed. Expected number for pull request id, received: {pullRequestIdStr}");
+            }
+
+            return (repoName, pullRequestId);
+        }
+
         private static string GetReleaseNotesFromChangeLog()
         {
             if (!File.Exists(ChangeLogFilename))
             {
                 throw new InvalidOperationException("Could not get draft release notes, as the change log file, " +
-                                                    $"{ChangeLogFilename}, does not exist.");
+                    $"{ChangeLogFilename}, does not exist.");
             }
 
             Logger.Info("Reading {0}...", ChangeLogFilename);

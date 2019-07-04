@@ -33,26 +33,9 @@ namespace ReleaseTool
 
         public GitHubClient(IGitHubOptions options)
         {
-            this.octoClient = new OctoClient(ProductHeader);
+            octoClient = new OctoClient(ProductHeader);
             this.options = options;
-        }
-            
-        public void LoadCredentials()
-        {
-            if (!string.IsNullOrEmpty(options.GitHubToken))
-            {
-                octoClient.Credentials = new Credentials(options.GitHubToken);
-            }
-            else
-            {
-                if (!File.Exists(options.GitHubTokenFile))
-                {
-                    throw new ArgumentException("Failed to get GitHub Token as the file specified does not exist.");
-                }
-                
-                octoClient.Credentials = new Credentials(File.ReadAllText(
-                    Common.ReplaceHomePath(options.GitHubTokenFile)));
-            }
+            LoadCredentials();
         }
 
         public Repository GetRepositoryFromRemote(string remote)
@@ -64,7 +47,10 @@ namespace ReleaseTool
                 throw new ArgumentException($"Failed to parse remote {remote}. Not a valid github repository.");
             }
 
-            var repositoryTask = octoClient.Repository.Get(matches.Groups[1].Value, matches.Groups[2].Value);
+            var owner = matches.Groups[1].Value;
+            var repo = matches.Groups[2].Value;
+
+            var repositoryTask = octoClient.Repository.Get(owner, repo);
 
             return repositoryTask.Result;
         }
@@ -77,19 +63,16 @@ namespace ReleaseTool
             return createPullRequestTask.Result;
         }
 
-        public bool RemoveAdminBranchEnforcement(Repository repository, string branch)
+        public PullRequestMerge MergePullRequest(Repository repository, int pullRequestId)
         {
-            var removeAdminBranchEnforcementTask = octoClient.Repository.Branch.RemoveAdminEnforcement(repository.Id, branch);
-            return removeAdminBranchEnforcementTask.Result;
-        }
-
-        public void AddAdminBranchEnforcement(Repository repository, string branch)
-        {
-            var addAdminBranchEnforcementTask = octoClient.Repository.Branch.AddAdminEnforcement(repository.Id, branch);
-            if (!addAdminBranchEnforcementTask.Result.Enabled)
+            var mergePullRequest = new MergePullRequest
             {
-                throw new InvalidOperationException($"Failed to add admin branch enforcement from branch {branch}");
-            }
+                MergeMethod = PullRequestMergeMethod.Squash
+            };
+
+            var mergePullRequestTask = octoClient.PullRequest.Merge(repository.Id, pullRequestId, mergePullRequest);
+
+            return mergePullRequestTask.Result;
         }
 
         public Release CreateDraftRelease(Repository repository, string tag, string body, string name, string commitish)
@@ -109,6 +92,24 @@ namespace ReleaseTool
         {
             var uploadAssetTask = octoClient.Repository.Release.UploadAsset(release, new ReleaseAssetUpload(fileName, contentType, data, null));
             return uploadAssetTask.Result;
+        }
+        
+        private void LoadCredentials()
+        {
+            if (!string.IsNullOrEmpty(options.GitHubToken))
+            {
+                octoClient.Credentials = new Credentials(options.GitHubToken);
+            }
+            else
+            {
+                if (!File.Exists(options.GitHubTokenFile))
+                {
+                    throw new ArgumentException($"Failed to get GitHub Token as the file specified at {options.GitHubTokenFile} does not exist.");
+                }
+                
+                octoClient.Credentials = new Credentials(File.ReadAllText(
+                    Common.ReplaceHomePath(options.GitHubTokenFile)));
+            }
         }
     }
 }
