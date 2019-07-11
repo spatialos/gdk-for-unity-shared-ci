@@ -9,11 +9,16 @@ namespace PackageSymLinker
 {
     internal class Options
     {
-        [Option('s', "packages-source-dir", HelpText = "The source directory which contains the packages.", Required = true)]
+        [Option('s', "packages-source-dir", HelpText = "The source directory which contains the packages.",
+            Required = true)]
         public string PackagesSourceDir { get; set; }
-        
-        [Option('t', "package-target-dir", HelpText = "The target directory which has a package manifest.", Required = true)]
+
+        [Option('t', "package-target-dir", HelpText = "The target directory which has a package manifest.",
+            Required = true)]
         public string PackagesTargetDir { get; set; }
+
+        [Option('c', "copy", HelpText = "Copy the packages instead of symlinking. Used in CI.", Default = false)]
+        public bool ShouldCopy { get; set; }
 
         public string ManifestPath => Path.Combine(PackagesTargetDir, "manifest.json");
 
@@ -35,7 +40,7 @@ namespace PackageSymLinker
             }
         }
     }
-    
+
     public class Program
     {
         static int Main(string[] args)
@@ -59,7 +64,14 @@ namespace PackageSymLinker
                     var sourceDir = Path.Combine(options.PackagesSourceDir, dep);
                     var targetDir = Path.Combine(options.PackagesTargetDir, dep);
 
-                    MakeSymlink(sourceDir, targetDir);
+                    if (options.ShouldCopy)
+                    {
+                        CopyDirectories(sourceDir, targetDir);
+                    }
+                    else
+                    {
+                        MakeSymlink(sourceDir, targetDir);
+                    }
                 }
             }
             catch (Exception e)
@@ -68,7 +80,7 @@ namespace PackageSymLinker
                 Console.Error.WriteLine(e.InnerException);
                 return 1;
             }
-            
+
             return 0;
         }
 
@@ -77,7 +89,7 @@ namespace PackageSymLinker
             var uniqueDependencies = new HashSet<string>();
             var unvisitedFiles = new Queue<string>();
             var visited = new HashSet<string>();
-            
+
             unvisitedFiles.Enqueue(options.ManifestPath);
 
             while (unvisitedFiles.Count > 0)
@@ -94,7 +106,7 @@ namespace PackageSymLinker
                     {
                         continue;
                     }
-                    
+
                     // Skip local package references.
                     var source = dep.Value;
                     if (source.StartsWith("file:"))
@@ -111,12 +123,13 @@ namespace PackageSymLinker
                         {
                             unvisitedFiles.Enqueue(packagePath);
                         }
-                        
+
                         uniqueDependencies.Add(name);
                     }
                     else
                     {
-                        throw new InvalidOperationException($"Found dependency {name} in {manifestFilePath}, but could not find a matching package in {options.PackagesSourceDir}");
+                        throw new InvalidOperationException(
+                            $"Found dependency {name} in {manifestFilePath}, but could not find a matching package in {options.PackagesSourceDir}");
                     }
                 }
             }
@@ -127,10 +140,11 @@ namespace PackageSymLinker
         private static void MakeSymlink(string sourcePath, string targetPath)
         {
             ProcessStartInfo startInfo;
-            
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                startInfo = new ProcessStartInfo("cmd.exe", $"/c mklink /D {targetPath.Replace("/", "\\")} {sourcePath.Replace("/", "\\")}");
+                startInfo = new ProcessStartInfo("cmd.exe",
+                    $"/c mklink /D {targetPath.Replace("/", "\\")} {sourcePath.Replace("/", "\\")}");
             }
             else
             {
@@ -148,9 +162,38 @@ namespace PackageSymLinker
 
                     if (proc.ExitCode != 0)
                     {
-                        throw new InvalidOperationException($"Failed to make a symlink between {sourcePath} and {targetPath}. Output: {proc.StandardError.ReadToEnd()}");
+                        throw new InvalidOperationException(
+                            $"Failed to make a symlink between {sourcePath} and {targetPath}. Output: {proc.StandardError.ReadToEnd()}");
                     }
                 }
+            }
+        }
+
+        private static void CopyDirectories(string sourcePath, string targetPath)
+        {
+            // Get the subdirectories for the specified directory.
+            var dir = new DirectoryInfo(sourcePath);
+
+            if (!dir.Exists)
+            {
+                throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourcePath}");
+            }
+            
+            // If the destination directory doesn't exist, create it.
+            if (!Directory.Exists(targetPath))
+            {
+                Directory.CreateDirectory(targetPath);
+            }
+            
+            foreach (var file in dir.GetFiles())
+            {
+                var temppath = Path.Combine(targetPath, file.Name);
+                file.CopyTo(temppath, false);
+            }
+
+            foreach (var subDirectory in dir.GetDirectories())
+            {
+                CopyDirectories(subDirectory.FullName, Path.Combine(targetPath, subDirectory.Name));
             }
         }
     }
