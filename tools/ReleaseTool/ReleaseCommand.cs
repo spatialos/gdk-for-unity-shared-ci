@@ -22,7 +22,7 @@ namespace ReleaseTool
         private const string ChangeLogFilename = "CHANGELOG.md";
 
         [Verb("release", HelpText = "Merge a release branch and create a github release draft.")]
-        public class Options : GitHubClient.IGitHubOptions
+        public class Options : GitHubClient.IGitHubOptions, BuildkiteMetadataSink.IBuildkiteOptions
         {
             [Value(0, MetaName = "version", HelpText = "The version that is being released.")]
             public string Version { get; set; }
@@ -34,6 +34,8 @@ namespace ReleaseTool
             public string GitHubTokenFile { get; set; }
 
             public string GitHubToken { get; set; }
+
+            public string MetadataFilePath { get; set; }
         }
 
         private readonly Options options;
@@ -83,6 +85,14 @@ namespace ReleaseTool
                     Logger.Info("Release Successful!");
                     Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
                     Logger.Info("Draft release: {0}", release.HtmlUrl);
+
+                    if (repoName == "gdk-for-unity" && BuildkiteMetadataSink.CanWrite(options))
+                    {
+                        using (var sink = new BuildkiteMetadataSink(options))
+                        {
+                            sink.WriteMetadata("gdk-for-unity-hash", gitClient.GetHeadCommit().Sha);
+                        }
+                    }
                 }
             }
             catch (Exception e)

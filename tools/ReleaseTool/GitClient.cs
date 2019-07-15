@@ -17,7 +17,7 @@ namespace ReleaseTool
         private const string DefaultRemote = "origin";
 
         private const string GitCommand = "git";
-        private const string PushArgumentsTemplate = "push {0} HEAD:refs/heads/{1}";
+        private const string ForcePushArgumentsTemplate = "push -f {0} HEAD:refs/heads/{1}";
         private const string FetchArguments = "fetch {0}";
         private const string CloneArgumentsTemplate = "clone {0} {1}";
         private const string AddRemoteArgumentsTemplate = "remote add {0} {1}";
@@ -82,11 +82,11 @@ namespace ReleaseTool
             RunGitCommand("fetch", string.Format(FetchArguments, remote ?? DefaultRemote), RepositoryPath);
         }
 
-        public void Push(string remoteBranchName)
+        public void ForcePush(string remoteBranchName)
         {
             Logger.Info("Pushing to remote...");
 
-            var pushArguments = string.Format(PushArgumentsTemplate, DefaultRemote, remoteBranchName);
+            var pushArguments = string.Format(ForcePushArgumentsTemplate, DefaultRemote, remoteBranchName);
 
             RunGitCommand("push branch", pushArguments, RepositoryPath);
         }

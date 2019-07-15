@@ -23,7 +23,8 @@ namespace ReleaseTool
         private const string PackageJsonFilename = "package.json";
         private const string PackageJsonVersionString = "version";
         private const string PackageJsonDependenciesString = "dependencies";
-        private const string PackageJsonDependenciesPrefix = "com.improbable.gdk";
+        private const string PackageJsonDependenciesPrefix = "io.improbable.gdk";
+        private const string GithubBotUser = "gdk-for-unity-bot";
 
         private const string CommitMessageTemplate = "Release candidate for version {0}.";
 
@@ -35,7 +36,7 @@ namespace ReleaseTool
         private const string PullRequestTemplate = "Release {0} - Pre-Validation";
 
         [Verb("prep", HelpText = "Prep a release candidate branch.")]
-        public class Options : GitHubClient.IGitHubOptions
+        public class Options : GitHubClient.IGitHubOptions, BuildkiteMetadataSink.IBuildkiteOptions
         {
             [Value(0, MetaName = "version", HelpText = "The release version that is being cut.", Required = true)]
             public string Version { get; set; }
@@ -43,10 +44,6 @@ namespace ReleaseTool
             [Option('g', "update-pinned-gdk", HelpText =
                 "The git hash of the version of the gdk to upgrade to. (Only if this is a project).")]
             public string PinnedGdkVersion { get; set; }
-
-            // TODO: Once we have a robots account - set this to default robot account.
-            [Option("github-user", HelpText = "The user account that is using this.", Required = true)]
-            public string GithubUser { get; set; }
 
             [Option("git-repository-name", HelpText = "The Git repository that we are targeting.", Required = true)]
             public string GitRepoName { get; set; }
@@ -56,6 +53,12 @@ namespace ReleaseTool
             public string GitHubTokenFile { get; set; }
 
             public string GitHubToken { get; set; }
+
+            #endregion
+
+            #region IBuildkiteOptions implementation
+
+            public string MetadataFilePath { get; set; }
 
             #endregion
         }
@@ -79,7 +82,7 @@ namespace ReleaseTool
          */
         public int Run()
         {
-            var remoteUrl = string.Format(Common.RemoteUrlTemplate, options.GithubUser, options.GitRepoName);
+            var remoteUrl = string.Format(Common.RemoteUrlTemplate, GithubBotUser, options.GitRepoName);
 
             try
             {
@@ -108,13 +111,22 @@ namespace ReleaseTool
                     // This does step 5 from above.
                     var branchName = string.Format(ReleaseBranchNameTemplate, options.Version);
                     gitClient.Commit(string.Format(CommitMessageTemplate, options.Version));
-                    gitClient.Push(branchName);
+                    gitClient.ForcePush(branchName);
 
                     // This does step 6 from above.
                     var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOsRemote);
                     var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo,
-                        $"{options.GithubUser}:{branchName}", Common.DevelopBranch,
+                        $"{GithubBotUser}:{branchName}", Common.DevelopBranch,
                         string.Format(PullRequestTemplate, options.Version));
+
+                    if (BuildkiteMetadataSink.CanWrite(options))
+                    {
+                        using (var sink = new BuildkiteMetadataSink(options))
+                        {
+                            sink.WriteMetadata($"{options.GitRepoName}-release-branch", $"pull/{pullRequest.Number}/head:{branchName}");
+                            sink.WriteMetadata($"{options.GitRepoName}-pr-url", pullRequest.HtmlUrl);
+                        }
+                    }
 
                     Logger.Info("Successfully created release!");
                     Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
