@@ -21,6 +21,7 @@ namespace ReleaseTool
         private const string PackerConfigFile = "packer.config.json";
 
         private const string PackageJsonFilename = "package.json";
+        private const string PackageJsonNameKey = "name";
         private const string PackageJsonVersionString = "version";
         private const string PackageJsonDependenciesString = "dependencies";
         private const string PackageJsonDependenciesPrefix = "io.improbable.gdk";
@@ -163,9 +164,15 @@ namespace ReleaseTool
             using (var streamReader = new StreamReader(packageFile))
             {
                 jsonObject = JObject.Parse(streamReader.ReadToEnd());
-                if (jsonObject.ContainsKey(PackageJsonVersionString))
+
+                var name = (string) jsonObject[PackageJsonNameKey];
+
+                if (name.StartsWith(PackageJsonDependenciesPrefix))
                 {
-                    jsonObject[PackageJsonVersionString] = options.Version;
+                    if (jsonObject.ContainsKey(PackageJsonVersionString))
+                    {
+                        jsonObject[PackageJsonVersionString] = options.Version;
+                    }
                 }
 
                 if (jsonObject.ContainsKey(PackageJsonDependenciesString))
