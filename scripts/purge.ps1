@@ -30,7 +30,7 @@ function Kill-Dangling-Processes {
 	}
 }
 
-$ProcessesToKill = @("dotnet", "Unity", "UnityPackageManager")
+$ProcessesToKill = @("dotnet", "Unity", "UnityPackageManager", "spatial")
 
 ForEach ($Process in $ProcessesToKill)
 {
