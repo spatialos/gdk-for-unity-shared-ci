@@ -27,12 +27,18 @@ steps:
   - label: Prepare GDK for Unity release
     command: ci/prepare-release.sh gdk-for-unity
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    retry:
+      manual:
+        permit_on_passed: true
 
   - wait
 
   - label: "Add step for triggering release QA"
     command: ci/generate-release-qa-trigger.sh gdk-for-unity | buildkite-agent pipeline upload
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    retry:
+      manual:
+        permit_on_passed: true
 
   - block: Unblock GDK for Unity release
 
@@ -46,12 +52,18 @@ steps:
   - label: Prepare FPS Starter Project release
     command: ci/prepare-release.sh gdk-for-unity-fps-starter-project
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    retry:
+      manual:
+        permit_on_passed: true
 
   - wait
 
   - label: "Add step for triggering release QA"
     command: ci/generate-release-qa-trigger.sh gdk-for-unity-fps-starter-project | buildkite-agent pipeline upload
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    retry:
+      manual:
+        permit_on_passed: true
 
   - block: Unblock FPS Starter Project release
 
@@ -65,12 +77,18 @@ steps:
   - label: Prepare Blank Project release
     command: ci/prepare-release.sh gdk-for-unity-blank-project
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    retry:
+      manual:
+        permit_on_passed: true
 
   - wait
 
   - label: "Add step for triggering release QA"
     command: ci/generate-release-qa-trigger.sh gdk-for-unity-blank-project | buildkite-agent pipeline upload
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    retry:
+      manual:
+        permit_on_passed: true
 
   - block: Unblock Blank Project release
 
