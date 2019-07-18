@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 
@@ -11,8 +11,9 @@ namespace DocsLinter
     /// </summary>
     public class SimplifiedMarkdownDoc
     {
-        public List<ILink> Links = new List<ILink>();
-        public List<Heading> Headings = new List<Heading>();
+        public readonly List<RemoteLink> Links = new List<RemoteLink>();
+
+        private readonly string FilePath;
 
         public SimplifiedMarkdownDoc()
         {
@@ -22,44 +23,74 @@ namespace DocsLinter
         ///     Constructor for automatically parsing a MarkdownDocument object from Markdig.
         /// </summary>
         /// <param name="markdownDoc"></param>
-        public SimplifiedMarkdownDoc(MarkdownDocument markdownDoc)
+        /// <param name="filePath"></param>
+        public SimplifiedMarkdownDoc(MarkdownDocument markdownDoc, string filePath)
         {
-            Links.AddRange(markdownDoc.Descendants().OfType<LinkInline>().Select(ParseLink));
-            Headings.AddRange(markdownDoc.Descendants().OfType<HeadingBlock>().Select(heading => new Heading(heading)));
+            FilePath = filePath;
+
+            Links.AddRange(markdownDoc.Descendants()
+                .OfType<LinkInline>()
+                .Select(ParseLink)
+                .Where(link => !string.IsNullOrEmpty(link.Url)));
         }
 
-        /// <summary>
-        ///     A helper function that parses the Markdig link object and returns the correct type of link - remote or local.
-        /// </summary>
-        /// <param name="linkInline">The object from Markdig to parse.</param>
-        /// <returns></returns>
-        public static ILink ParseLink(LinkInline linkInline)
+        private RemoteLink NullLink = new RemoteLink(new LinkInline(null, null));
+
+        public RemoteLink ParseLink(LinkInline inlineLink)
         {
-            if (linkInline.Url.StartsWith("http") || linkInline.Url.StartsWith("www"))
+            var url = inlineLink.Url;
+
+            if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
             {
-                return new RemoteLink(linkInline);
+                if (IsLinkToMarkdownFile(url))
+                {
+                    LinkCheckCommand.LogLinkWarning(FilePath, new RemoteLink(inlineLink),
+                        "is a direct link to a Markdown file.");
+                }
+
+                return NullLink;
             }
 
-            return new LocalLink(linkInline);
+            var uriScheme = new Uri(url).Scheme;
+            if (!uriScheme.Equals("http") && !uriScheme.Equals("https"))
+            {
+                LinkCheckCommand.LogLinkWarning(FilePath, new RemoteLink(inlineLink),
+                    "is not a http or https link.");
+
+                return NullLink;
+            }
+
+            // exclude console.improbable.io because agent is not logged in
+            if (url.Contains("console.improbable.io"))
+            {
+                return NullLink;
+            }
+
+            return new RemoteLink(inlineLink);
+        }
+
+        private bool IsLinkToMarkdownFile(string uri)
+        {
+            var link = uri;
+            var hashIndex = link.IndexOf("#", StringComparison.Ordinal);
+            if (hashIndex != -1)
+            {
+                link = link.Substring(0, hashIndex);
+            }
+
+            return link.EndsWith(".md");
         }
     }
 
     /// <summary>
-    ///     Interface for a link.
+    ///     A struct that represents a remote link. I.e. - "https://www.google.com".
     /// </summary>
-    public interface ILink
+    public readonly struct RemoteLink
     {
-    }
-
-    /// <summary>
-    ///     A data class that represents a remote link. I.e. - "https://www.google.com".
-    /// </summary>
-    public struct RemoteLink : ILink
-    {
-        public string Url;
+        public readonly string Url;
 
         /// <summary>
-        ///     Constructor for that parses the Markdig link object.
+        ///     Constructor for RemoteLink that parses the Markdig link object.
         /// </summary>
         /// <param name="link">The Markdig link object.</param>
         public RemoteLink(LinkInline link)
@@ -70,112 +101,6 @@ namespace DocsLinter
         public override string ToString()
         {
             return Url;
-        }
-    }
-
-    /// <summary>
-    ///     A data class that represents a local link. I.e. - "../README.md#heading"
-    /// </summary>
-    public struct LocalLink : ILink
-    {
-        public Heading? Heading;
-        public string FilePath;
-
-        /// <summary>
-        ///     Constructor for that parses the Markdig link object.
-        /// </summary>
-        /// <param name="link">The Markdig link object.</param>
-        public LocalLink(LinkInline link)
-        {
-            if (!link.Url.Contains("#"))
-            {
-                FilePath = link.Url;
-                Heading = null;
-            }
-            else if (link.Url.StartsWith("#"))
-            {
-                FilePath = null;
-                Heading = new Heading(link.Url);
-            }
-            else
-            {
-                FilePath = link.Url.Split('#')[0];
-                Heading = new Heading(link.Url.Remove(0, FilePath.Length));
-            }
-        }
-
-        public override string ToString()
-        {
-            return $"{FilePath ?? string.Empty}{Heading?.ToString() ?? string.Empty}";
-        }
-    }
-
-    /// <summary>
-    ///     A  data struct that represents a Markdown heading.
-    /// </summary>
-    public struct Heading
-    {
-        private static readonly Regex sanitizationRegex = new Regex("[^a-zA-Z -]");
-
-        public string Title;
-
-        /// <summary>
-        ///     Constructor for parsing the Markdig heading object.
-        /// </summary>
-        /// <param name="headingBlock">The Markdig heading object. Note that this is an AST object.</param>
-        public Heading(HeadingBlock headingBlock)
-        {
-            Title = string.Empty;
-            for (var inline = headingBlock.Inline.FirstChild; inline != null; inline = inline.NextSibling)
-            {
-                if (inline is CodeInline codeInline)
-                {
-                    Title += codeInline.Content;
-                }
-                else
-                {
-                    Title += inline.ToString();
-                }
-            }
-
-            SanitizeTitle();
-        }
-
-        /// <summary>
-        ///     Constructor for parsing a heading from a plain string.
-        /// </summary>
-        /// <param name="heading">The heading string</param>
-        public Heading(string heading)
-        {
-            Title = string.Empty;
-            for (var i = 0; i < heading.Length; i++)
-            {
-                if (heading[i] == '#')
-                {
-                    continue;
-                }
-
-                Title = heading.Substring(i, heading.Length - i);
-                SanitizeTitle();
-                break;
-            }
-        }
-
-        public override string ToString()
-        {
-            return $"#{Title}";
-        }
-
-        /// <summary>
-        ///     Helper method to sanitize a Markdown header. Markdown converts the title into a link.
-        ///     For example:
-        ///     if the Markdown header title is : "### My Awesome Documentation!",
-        ///     the corresponding link will be "#my-awesome-documentation"
-        /// </summary>
-        private void SanitizeTitle()
-        {
-            var sanitized = sanitizationRegex.Replace(Title.ToLower(), string.Empty);
-            Title = sanitized.Trim().Replace(" ", "-");
         }
     }
 }
