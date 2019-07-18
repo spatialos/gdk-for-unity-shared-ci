@@ -21,6 +21,7 @@ namespace ReleaseTool
         private const string PackerConfigFile = "packer.config.json";
 
         private const string PackageJsonFilename = "package.json";
+        private const string ManifestJsonFilename = "manifest.json";
         private const string PackageJsonNameKey = "name";
         private const string PackageJsonVersionString = "version";
         private const string PackageJsonDependenciesString = "dependencies";
@@ -103,6 +104,7 @@ namespace ReleaseTool
                     // This does step 4 from above.
                     using (new WorkingDirectoryScope(gitClient.RepositoryPath))
                     {
+                        UpdateManifestJson(gitClient);
                         UpdateAllPackageJsons(gitClient);
                         UpdateGdkVersion(gitClient);
                         UpdateChangeLog(gitClient);
@@ -124,7 +126,8 @@ namespace ReleaseTool
                     {
                         using (var sink = new BuildkiteMetadataSink(options))
                         {
-                            sink.WriteMetadata($"{options.GitRepoName}-release-branch", $"pull/{pullRequest.Number}/head:{branchName}");
+                            sink.WriteMetadata($"{options.GitRepoName}-release-branch",
+                                $"pull/{pullRequest.Number}/head:{branchName}");
                             sink.WriteMetadata($"{options.GitRepoName}-pr-url", pullRequest.HtmlUrl);
                         }
                     }
@@ -141,6 +144,14 @@ namespace ReleaseTool
             }
 
             return 0;
+        }
+
+        private void UpdateManifestJson(GitClient gitClient)
+        {
+            var manifestFile = Path.Combine(Directory.GetCurrentDirectory(), "workers", "unity", "Packages",
+                ManifestJsonFilename);
+
+            UpdatePackageJson(manifestFile, gitClient);
         }
 
         private void UpdateAllPackageJsons(GitClient gitClient)
@@ -165,11 +176,12 @@ namespace ReleaseTool
             {
                 jsonObject = JObject.Parse(streamReader.ReadToEnd());
 
-                var name = (string) jsonObject[PackageJsonNameKey];
-
-                if (name.StartsWith(PackageJsonDependenciesPrefix))
+                if (jsonObject.ContainsKey(PackageJsonNameKey))
                 {
-                    if (jsonObject.ContainsKey(PackageJsonVersionString))
+                    var name = (string) jsonObject[PackageJsonNameKey];
+
+                    if (name.StartsWith(PackageJsonDependenciesPrefix) &&
+                        jsonObject.ContainsKey(PackageJsonVersionString))
                     {
                         jsonObject[PackageJsonVersionString] = options.Version;
                     }
@@ -181,7 +193,9 @@ namespace ReleaseTool
 
                     foreach (var property in dependencies.Properties())
                     {
-                        if (property.Name.StartsWith(PackageJsonDependenciesPrefix))
+                        // If it's an Improbable package and it's not a "file:" reference.
+                        if (property.Name.StartsWith(PackageJsonDependenciesPrefix) &&
+                            !((string) property.Value).StartsWith("file:"))
                         {
                             dependencies[property.Name] = options.Version;
                         }
