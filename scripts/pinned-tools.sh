@@ -65,7 +65,7 @@ function uploadAssembly() {
 
   setAssemblyName "${1}"
 
-  echo "Uploading assembly"
+  echo "--- Uploading assembly :outbox_tray:"
   spatial cloud upload "${ASSEMBLY_NAME}" --log_level=debug --force --enable_pre_upload_check=false --project_name="${2}"
 }
 
