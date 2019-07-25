@@ -4,7 +4,11 @@
 ### If you don't work at Improbable, this may be interesting as a guide to what software versions we use for our
 ### automation, but not much more than that.
 
-set -e -u -x -o pipefail
+set -e -u -o pipefail
+
+if [[ -n "${DEBUG-}" ]]; then
+  set -x
+fi
 
 if [[ -z "$BUILDKITE" ]]; then
   echo "This script is only to be run on Improbable CI."
@@ -23,6 +27,7 @@ setupReleaseTool
 
 mkdir -p ./logs
 
+echo "--- Releasing ${REPO} @ ${RELEASE_VERSION} :tada:"
 docker run \
     -v "${SECRETS_DIR}":/var/ssh \
     -v "${SECRETS_DIR}":/var/github \
@@ -33,4 +38,5 @@ docker run \
             --buildkite-metadata-path="/var/logs/bk-metadata" \
             --pull-request-url="${PR_URL}"
 
+echo "--- Writing metadata :pencil2:"
 writeBuildkiteMetadata "./logs/bk-metadata"

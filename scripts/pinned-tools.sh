@@ -22,63 +22,7 @@ function cleanUnity() {
   rm -rf "${1}/Temp"
 }
 
-function checkForAllPlaybackEngines() {
-  IMPROBABLE_UNITY_VERSIONED=$1
-
-  if isWindows; then
-    PLAYBACK_ENGINE_ROOT="$IMPROBABLE_UNITY_VERSIONED/Editor/Data/PlaybackEngines"
-  elif isMacOS; then
-    PLAYBACK_ENGINE_ROOT="$IMPROBABLE_UNITY_VERSIONED/PlaybackEngines"
-  fi
-
-  IMPROBABLE_UNITY_ROOT=$2
-
-  [ ! -d "$PLAYBACK_ENGINE_ROOT/LinuxStandaloneSupport" ]
-  LINUX_ERROR=$?
-
-  [ ! -d "$PLAYBACK_ENGINE_ROOT/AndroidPlayer" ]
-  ANDROID_ERROR=$?
-
-  [ ! -d "$PLAYBACK_ENGINE_ROOT/iOSSupport" ]
-  IOS_ERROR=$?
-
-  [ ! -d "$PLAYBACK_ENGINE_ROOT/WindowsStandaloneSupport" ]
-  WINDOWS_MONO_ERROR=$?
-
-  # Assume installed until we know for sure it isn't, so that we only flag up modules relevant for the current platform.
-  MAC_IL2CPP_ERROR=1
-  MAC_MONO_ERROR=1
-  WINDOWS_IL2CPP_ERROR=1
-
-  # Only check for Mac IL2CPP support on Mac agents, as Unity do not provide Mac-IL2CPP support for Windows.
-  # Only check for Mac standalone support on Windows because it is installed within the Unity app package itself on MacOS.
-  # Only check for Windows IL2CPP support on Windows agents, as Unity do not provide Windows-IL2CPP support for Mac.
-  if isMacOS; then
-    [ ! -d "$IMPROBABLE_UNITY_VERSIONED/Unity.app/Contents/PlaybackEngines/MacStandaloneSupport/Variations/macosx64_development_il2cpp" ]
-    MAC_IL2CPP_ERROR=$?
-  else
-    [ ! -d "$PLAYBACK_ENGINE_ROOT/MacStandaloneSupport" ]
-    MAC_MONO_ERROR=$?
-
-    [ ! -d "$PLAYBACK_ENGINE_ROOT/WindowsStandaloneSupport/Variations/win64_development_il2cpp" ]
-    WINDOWS_IL2CPP_ERROR=$?
-  fi
-
-  if [ $LINUX_ERROR -eq 0 ] || \
-     [ $ANDROID_ERROR -eq 0 ] || \
-     [ $IOS_ERROR -eq 0 ] || \
-     [ $WINDOWS_MONO_ERROR -eq 0 ] || \
-     [ $MAC_IL2CPP_ERROR -eq 0 ] || \
-     [ $MAC_MONO_ERROR -eq 0 ] || \
-     [ $WINDOWS_IL2CPP_ERROR -eq 0 ]
-  then
-    echo "Could not find all playback engines."
-    return 1
-  else
-    echo "All playback engines are already installed in: $PLAYBACK_ENGINE_ROOT."
-    return 0
-  fi
-}
+echo "--- Sourcing pinned tools :round_pushpin:"
 
 # Ensure for the Mac TC agents that dotnet is on the path.
 if isMacOS; then

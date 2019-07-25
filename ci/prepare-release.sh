@@ -4,7 +4,11 @@
 ### If you don't work at Improbable, this may be interesting as a guide to what software versions we use for our
 ### automation, but not much more than that.
 
-set -e -u -x -o pipefail
+set -e -u -o pipefail
+
+if [[ -n "${DEBUG-}" ]]; then
+  set -x
+fi
 
 if [[ -z "$BUILDKITE" ]]; then
   echo "This script is only to be run on Improbable CI."
@@ -22,6 +26,7 @@ setupReleaseTool
 
 mkdir -p ./logs
 
+echo "--- Preparing ${REPO} @ ${RELEASE_VERSION} :package:"
 if [[ "${REPO}" != "gdk-for-unity" ]]; then
 	PIN_HASH="$(buildkite-agent meta-data get gdk-for-unity-hash)"
 	PIN_ARG="--update-pinned-gdk=${PIN_HASH}"
@@ -39,4 +44,5 @@ docker run \
         --github-key-file="/var/github/github_token" \
         --buildkite-metadata-path="/var/logs/bk-metadata" ${PIN_ARG}
 
+echo "--- Writing metadata :pencil2:"
 writeBuildkiteMetadata "./logs/bk-metadata"

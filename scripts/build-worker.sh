@@ -15,20 +15,7 @@ if [[ -n "${DEBUG-}" ]]; then
   set -x
 fi
 
-# Workaround until the artifact proxying service is set up properly.
-# At least this gives us terminal output
-# https://improbableio.atlassian.net/browse/ENG-945
-function printLog() {
-    if [[ ${LOG_LOCATION-} ]]; then
-        cat "${LOG_LOCATION}" 1>&2
-    fi
-}
-
-trap printLog ERR
-
 source "$(dirname "$0")/pinned-tools.sh"
-
-echo "Building for: ${WORKER_TYPE} ${BUILD_ENVIRONMENT} ${SCRIPTING_BACKEND}"
 
 pushd "$(dirname "$0")/../"
     if [[ "${WORKER_TYPE}" == "MobileClient" ]]; then
@@ -53,7 +40,7 @@ pushd "$(dirname "$0")/../"
         LOG_FILE="$(pwd)/../logs/${WORKER_TYPE}-${BUILD_ENVIRONMENT}-${BUILD_TARGET_FILTER}-${SCRIPTING_BACKEND}.log"
         BUILD_TARGET_FILTER_ARG="+buildTargetFilter ${BUILD_TARGET_FILTER}"
     else
-        BLOCK_MESSAGE="Building ${WORKER_TYPE} for ${BUILD_ENVIRONMENT} and ${SCRIPTING_BACKEND}"
+        BLOCK_MESSAGE="Building ${WORKER_TYPE} for ${BUILD_ENVIRONMENT} using ${SCRIPTING_BACKEND}"
         LOG_FILE="$(pwd)/../logs/${WORKER_TYPE}-${BUILD_ENVIRONMENT}-${SCRIPTING_BACKEND}.log"
         BUILD_TARGET_FILTER_ARG=""
     fi
@@ -61,7 +48,7 @@ pushd "$(dirname "$0")/../"
     RUN_UNITY_PATH="$(pwd)/tools/RunUnity/RunUnity.csproj"
 
     pushd "$(pwd)/../workers/unity"
-        echo "${BLOCK_MESSAGE}"
+        echo "--- ${BLOCK_MESSAGE} :hammer_and_wrench:"
 
         dotnet run -p "${RUN_UNITY_PATH}" -- \
             -projectPath "." \

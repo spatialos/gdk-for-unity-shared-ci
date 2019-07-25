@@ -3,6 +3,7 @@ function cleanUp() {
 }
 
 function setupReleaseTool() {
+    echo "--- Setting up release tool :gear:"
     # Create temporary directory for secrets and set a trap to cleanup on exit.
     export SECRETS_DIR=$(mktemp -d)
     trap cleanUp EXIT
