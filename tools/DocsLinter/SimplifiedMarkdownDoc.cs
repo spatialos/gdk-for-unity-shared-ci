@@ -44,8 +44,8 @@ namespace DocsLinter
             {
                 if (IsLinkToMarkdownFile(url))
                 {
-                    LinkCheckCommand.LogLinkWarning(FilePath, new RemoteLink(inlineLink),
-                        "is a direct link to a Markdown file.");
+                    LinkCheckCommand.LogInvalidLink(FilePath, new RemoteLink(inlineLink),
+                        "You must not link directly to a Markdown file.");
                 }
 
                 return NullLink;

@@ -94,14 +94,14 @@ namespace DocsLinter.Tests
         }
 
         [Test]
-        public void Warn_if_relative_link_to_file()
+        public void Error_if_relative_link_to_file()
         {
-            LinkCheckCommand.warnings = null;
+            LinkCheckCommand.errors = null;
 
             var url = CreateRemoteLink("../README.md");
             var markdown = GetSimplifiedMarkdown(url);
 
-            Assert.IsTrue(LinkCheckCommand.warnings != null);
+            Assert.IsTrue(LinkCheckCommand.errors != null);
         }
 
         [Test]
@@ -125,14 +125,14 @@ namespace DocsLinter.Tests
         }
 
         [Test]
-        public void Warn_if_link_to_header_in_different_file()
+        public void Error_if_link_to_header_in_different_file()
         {
-            LinkCheckCommand.warnings = null;
+            LinkCheckCommand.errors = null;
 
             var url = CreateRemoteLink("../README.md#other-heading-in-doc");
             var markdown = GetSimplifiedMarkdown(url);
 
-            Assert.IsTrue(LinkCheckCommand.warnings != null);
+            Assert.IsTrue(LinkCheckCommand.errors != null);
         }
 
         [Test]
