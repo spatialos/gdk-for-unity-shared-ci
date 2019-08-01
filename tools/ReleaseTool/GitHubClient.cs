@@ -2,6 +2,7 @@
 using Octokit;
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using OctoClient = Octokit.GitHubClient;
 
@@ -55,9 +56,33 @@ namespace ReleaseTool
             return repositoryTask.Result;
         }
 
-        public PullRequest CreatePullRequest(Repository repository, string branchFrom, string branchTo, string pullRequestTitle)
-        { 
-            var newPullRequest = new NewPullRequest(pullRequestTitle, branchFrom, branchTo);
+        public bool TryGetPullRequest(Repository repository, string branchFrom, string branchTo, out PullRequest request)
+        {
+            var pullRequestRequest = new PullRequestRequest
+            {
+                State = ItemStateFilter.Open,
+                Base = branchTo,
+                Head = branchFrom
+            };
+
+            var results = octoClient.PullRequest
+                .GetAllForRepository(repository.Id, pullRequestRequest)
+                .Result;
+
+            if (results.Count == 0)
+            {
+                request = null;
+                return false;
+            }
+
+            request = results[0];
+            return true;
+        }
+
+        public PullRequest CreatePullRequest(Repository repository, string branchFrom, string branchTo, string pullRequestTitle, string body)
+        {
+            var newPullRequest = new NewPullRequest(pullRequestTitle, branchFrom, branchTo) {Body = body};
+
             var createPullRequestTask = octoClient.PullRequest.Create(repository.Id, newPullRequest);
 
             return createPullRequestTask.Result;

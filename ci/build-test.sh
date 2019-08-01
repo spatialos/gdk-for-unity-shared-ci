@@ -14,5 +14,7 @@ echo "--- Build Tools.sln :construction:"
 dotnet build tools/Tools.sln
 
 echo "--- Test DocsLinter.csproj :link:"
-TOOLS_TEST_RESULTS_FILES="$(pwd)/logs/tools-test-results.xml"
-dotnet test --logger:"nunit;LogFilePath=${TOOLS_TEST_RESULTS_FILES}" "tools/DocsLinter/DocsLinter.csproj"
+dotnet test --logger:"nunit;LogFilePath=$(pwd)/logs/docslinter-test-results.xml" "tools/DocsLinter/DocsLinter.csproj"
+
+echo "--- Test ReleaseTool.csproj :fork:"
+dotnet test --logger:"nunit;LogFilePath=$(pwd)/logs/releasetool-test-results.xml" "tools/ReleaseTool.Tests/ReleaseTool.Tests.csproj"

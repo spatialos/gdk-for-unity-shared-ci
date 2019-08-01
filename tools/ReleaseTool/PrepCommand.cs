@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Linq;
 using CommandLine;
 using Newtonsoft.Json.Linq;
+using NLog;
 using Packer;
 
 namespace ReleaseTool
@@ -16,7 +18,7 @@ namespace ReleaseTool
     /// </summary>
     internal class PrepCommand
     {
-        private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+        internal const string ChangeLogUpdateGdkTemplate = "- Upgraded to GDK for Unity version `{0}`";
 
         private const string PackerConfigFile = "packer.config.json";
 
@@ -32,10 +34,10 @@ namespace ReleaseTool
 
         private const string ChangeLogFilename = "CHANGELOG.md";
         private const string ChangeLogReleaseHeadingTemplate = "## `{0}` - {1:yyyy-MM-dd}";
-        private const string ChangeLogUpdateGdkTemplate = "- Upgraded to GDK for Unity version `{0}`";
         private const string ReleaseBranchNameTemplate = "feature/release-{0}";
 
         private const string PullRequestTemplate = "Release {0} - Pre-Validation";
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         [Verb("prep", HelpText = "Prep a release candidate branch.")]
         public class Options : GitHubClient.IGitHubOptions, BuildkiteMetadataSink.IBuildkiteOptions
@@ -50,6 +52,12 @@ namespace ReleaseTool
             [Option("git-repository-name", HelpText = "The Git repository that we are targeting.", Required = true)]
             public string GitRepoName { get; set; }
 
+            #region IBuildkiteOptions implementation
+
+            public string MetadataFilePath { get; set; }
+
+            #endregion
+
             #region IGithubOptions implementation
 
             public string GitHubTokenFile { get; set; }
@@ -58,11 +66,7 @@ namespace ReleaseTool
 
             #endregion
 
-            #region IBuildkiteOptions implementation
-
-            public string MetadataFilePath { get; set; }
-
-            #endregion
+            public bool ShouldUpdateGdkVersion => !string.IsNullOrEmpty(PinnedGdkVersion);
         }
 
         private readonly Options options;
@@ -106,9 +110,25 @@ namespace ReleaseTool
                     {
                         UpdateManifestJson(gitClient);
                         UpdateAllPackageJsons(gitClient);
-                        UpdateGdkVersion(gitClient);
-                        UpdateChangeLog(gitClient);
                         UpdatePackerConfig(gitClient);
+
+                        if (options.ShouldUpdateGdkVersion)
+                        {
+                            UpdateGdkVersion(gitClient, options.PinnedGdkVersion);
+                        }
+
+                        if (!File.Exists(ChangeLogFilename))
+                        {
+                            throw new InvalidOperationException("Could not update the change log as the file," +
+                                $" {ChangeLogFilename}, does not exist");
+                        }
+
+                        Logger.Info("Updating {0}...", ChangeLogFilename);
+
+                        var changelog = File.ReadAllLines(ChangeLogFilename).ToList();
+                        UpdateChangeLog(changelog, options);
+                        File.WriteAllLines(ChangeLogFilename, changelog);
+                        gitClient.StageFile(ChangeLogFilename);
                     }
 
                     // This does step 5 from above.
@@ -118,9 +138,19 @@ namespace ReleaseTool
 
                     // This does step 6 from above.
                     var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOsRemote);
-                    var pullRequest = gitHubClient.CreatePullRequest(gitHubRepo,
-                        $"{GithubBotUser}:{branchName}", Common.DevelopBranch,
-                        string.Format(PullRequestTemplate, options.Version));
+
+                    var branchFrom = $"{GithubBotUser}:{branchName}";
+                    var branchTo = Common.DevelopBranch;
+
+                    // Only open a PR if one does not exist yet.
+                    if (!gitHubClient.TryGetPullRequest(gitHubRepo, branchFrom, branchTo, out var pullRequest))
+                    {
+                        pullRequest = gitHubClient.CreatePullRequest(gitHubRepo,
+                            branchFrom,
+                            branchTo,
+                            string.Format(PullRequestTemplate, options.Version),
+                            GetPullRequestBody(options.GitRepoName));
+                    }
 
                     if (BuildkiteMetadataSink.CanWrite(options))
                     {
@@ -132,9 +162,9 @@ namespace ReleaseTool
                         }
                     }
 
+                    Logger.Info("Pull request available: {0}", pullRequest.HtmlUrl);
                     Logger.Info("Successfully created release!");
                     Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
-                    Logger.Info("Pull request available: {0}", pullRequest.HtmlUrl);
                 }
             }
             catch (Exception e)
@@ -192,8 +222,8 @@ namespace ReleaseTool
                     var dependencies = (JObject) jsonObject[PackageJsonDependenciesString];
 
                     foreach (var property in dependencies.Properties())
-                    {
                         // If it's an Improbable package and it's not a "file:" reference.
+                    {
                         if (property.Name.StartsWith(PackageJsonDependenciesPrefix) &&
                             !((string) property.Value).StartsWith("file:"))
                         {
@@ -208,100 +238,80 @@ namespace ReleaseTool
             gitClient.StageFile(packageFile);
         }
 
-        private void UpdateGdkVersion(GitClient gitClient)
+        internal static void UpdateChangeLog(List<string> changelog, Options options)
         {
-            if (!ShouldUpdateGdkVersion())
+            // If we already have a changelog entry for this release. Skip this step.
+            if (changelog.Any(line => IsMarkdownHeading(line, 2, $"`{options.Version}` - ")))
+            {
+                Logger.Info($"Changelog already has release version {options.Version}. Skipping..", ChangeLogFilename);
+                return;
+            }
+
+            // First add the new release heading under the "## Unreleased" one.
+            // Assuming that this is the first heading.
+            var unreleasedIndex = changelog.FindIndex(line => IsMarkdownHeading(line, 2));
+            var releaseHeading = string.Format(ChangeLogReleaseHeadingTemplate, options.Version,
+                DateTime.Now);
+
+            changelog.InsertRange(unreleasedIndex + 1, new[]
+            {
+                string.Empty,
+                releaseHeading
+            });
+
+            // If we don't need to update the Changed section. We are done!
+            if (!options.ShouldUpdateGdkVersion)
             {
                 return;
             }
 
-            UpdateGdkVersion(gitClient, options.PinnedGdkVersion);
-        }
+            // Next find the changed section between the second and third ## heading.
+            // If one doesn't exist, create it.
 
-        /**
-         * Simple method for editing the ChangeLog 
-         */
-        private void UpdateChangeLog(GitClient gitClient)
-        {
-            if (!File.Exists(ChangeLogFilename))
+            // First find all ## sections (release markers).
+            var headerTwoIndexes = changelog
+                .Select((value, index) => (value, index))
+                .Where(tuple => IsMarkdownHeading(tuple.Item1, 2))
+                .Select(tuple => tuple.Item2)
+                .ToList();
+
+            // 2 headers = Unreleased, this release
+            if (headerTwoIndexes.Count < 2)
             {
-                throw new InvalidOperationException("Could not update the change log as the file," +
-                    $" {ChangeLogFilename}, does not exist");
+                throw new InvalidOperationException(
+                    "Changelog is malformed. Expected at least two header two (##) entries.");
             }
 
-            Logger.Info("Updating {0}...", ChangeLogFilename);
+            // Grab the valid range for the Changed section we want to target.
+            // For the end, if is no previous release, use the entire changelog.
+            var startCurrentReleaseIndex = headerTwoIndexes[1];
+            var endCurrentReleaseIndex = headerTwoIndexes.Count == 2 ? changelog.Count - 1 : headerTwoIndexes[2];
 
-            var newChangeLog = new StringBuilder();
+            var changedIndexes = changelog.Select((value, index) => (value, index))
+                .Where(tuple => IsMarkdownHeading(tuple.Item1, 3, "Changed"))
+                .Select(tuple => tuple.Item2)
+                .ToList();
 
-            var hasReplacedUnreleased = false;
-            var isInChangedSection = false;
-            var isInChangedBulletPoints = false;
-            var shouldUpdateGdkVersion = ShouldUpdateGdkVersion();
+            int changedHeaderIndex;
 
-            using (var reader = new StreamReader(ChangeLogFilename))
+            // If there is no changed section or there isn't one in the current release, add one!
+            if (changedIndexes.Count == 0 || changedIndexes[0] > endCurrentReleaseIndex)
             {
-                while (!reader.EndOfStream)
+                // Insert a changed section.
+                changelog.InsertRange(startCurrentReleaseIndex + 1, new[]
                 {
-                    var line = reader.ReadLine();
+                    string.Empty,
+                    "### Changed"
+                });
 
-                    if (line.StartsWith("## ") && !hasReplacedUnreleased)
-                    {
-                        newChangeLog.AppendLine(line);
-                        newChangeLog.AppendLine(string.Empty);
-                        newChangeLog.AppendLine(string.Format(ChangeLogReleaseHeadingTemplate, options.Version,
-                            DateTime.Now));
-
-                        hasReplacedUnreleased = true;
-                        continue;
-                    }
-
-                    if (hasReplacedUnreleased && shouldUpdateGdkVersion && line.StartsWith("### Changed"))
-                    {
-                        newChangeLog.AppendLine(line);
-
-                        isInChangedSection = true;
-                        continue;
-                    }
-
-                    if (isInChangedSection && line.StartsWith("-"))
-                    {
-                        newChangeLog.AppendLine(line);
-
-                        isInChangedBulletPoints = true;
-                        continue;
-                    }
-
-                    if (isInChangedBulletPoints && !line.StartsWith("-"))
-                    {
-                        newChangeLog.AppendLine(string.Format(ChangeLogUpdateGdkTemplate, options.Version));
-                        newChangeLog.AppendLine(line);
-
-                        shouldUpdateGdkVersion = false;
-                        isInChangedBulletPoints = false;
-                        isInChangedSection = false;
-                        continue;
-                    }
-
-                    // If there is no existing "Changed" section
-                    if (shouldUpdateGdkVersion && line.StartsWith("## "))
-                    {
-                        newChangeLog.AppendLine("### Changed");
-                        newChangeLog.AppendLine(string.Empty);
-                        newChangeLog.AppendLine(string.Format(ChangeLogUpdateGdkTemplate, options.Version));
-                        newChangeLog.AppendLine(string.Empty);
-                        newChangeLog.AppendLine(line);
-
-                        shouldUpdateGdkVersion = false;
-                        continue;
-                    }
-
-                    newChangeLog.AppendLine(line);
-                }
+                changedHeaderIndex = startCurrentReleaseIndex + 2;
+            }
+            else
+            {
+                changedHeaderIndex = changedIndexes[0];
             }
 
-            File.WriteAllText(ChangeLogFilename, newChangeLog.ToString());
-
-            gitClient.StageFile(ChangeLogFilename);
+            changelog.Insert(changedHeaderIndex + 1, string.Format(ChangeLogUpdateGdkTemplate, options.Version));
         }
 
         private void UpdatePackerConfig(GitClient gitClient)
@@ -321,11 +331,6 @@ namespace ReleaseTool
             gitClient.StageFile(PackerConfigFile);
         }
 
-        private bool ShouldUpdateGdkVersion()
-        {
-            return !string.IsNullOrEmpty(options.PinnedGdkVersion);
-        }
-
         private static void UpdateGdkVersion(GitClient gitClient, string newPinnedVersion)
         {
             const string gdkPinnedFilename = "gdk.pinned";
@@ -341,6 +346,84 @@ namespace ReleaseTool
             File.WriteAllText(gdkPinnedFilename, newPinnedVersion);
 
             gitClient.StageFile(gdkPinnedFilename);
+        }
+
+        private static bool IsMarkdownHeading(string markdownLine, int level, string startTitle = null)
+        {
+            var heading = $"{new string('#', level)} {startTitle ?? string.Empty}";
+
+            return markdownLine.StartsWith(heading);
+        }
+
+        private static string GetPullRequestBody(string repoName)
+        {
+            switch (repoName)
+            {
+                case "gdk-for-unity":
+                    return @"#### Description
+- Package versions
+- Changelog
+- Upgrade guide
+
+#### Tests
+- Windows
+	- [ ] local deploy
+	- [ ] cloud client (Release QA pipeline)
+	- [ ] editor tooling
+- Mac
+	- [ ] local deploy
+	- [ ] cloud client (Release QA pipeline)
+	- [ ] editor tooling
+- Android
+	- [ ] local client
+	- [ ] cloud client
+- iOS
+	- [ ] local client
+	- [ ] cloud client";
+                case "gdk-for-unity-fps-starter-project":
+                    return @"#### Description
+- Package versions
+- Changelog
+- Pinned gdk
+
+#### Tests
+- Windows
+	- [ ] local deploy
+	- [ ] cloud client (Release QA pipeline)
+- Mac
+	- [ ] local deploy
+	- [ ] cloud client (Release QA pipeline)
+- Android
+	- [ ] local client
+	- [ ] cloud client
+- iOS
+	- [ ] local client
+	- [ ] cloud client
+- Session based flow
+	- [ ] PC
+	- [ ] Mobile";
+                case "gdk-for-unity-blank-project":
+                    return @"#### Description
+- Package versions
+- Changelog
+- pinned gdk
+
+#### Tests
+- Windows
+	- [ ] local deploy
+	- [ ] cloud client (Release QA pipeline)
+- Mac
+	- [ ] local deploy
+	- [ ] cloud client (Release QA pipeline)
+- Android
+	- [ ] local client
+	- [ ] cloud client
+- iOS
+	- [ ] local client
+	- [ ] cloud client";
+                default:
+                    throw new ArgumentException($"No PR body template found for repo {repoName}");
+            }
         }
     }
 }
