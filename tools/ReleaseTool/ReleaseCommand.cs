@@ -80,7 +80,7 @@ namespace ReleaseTool
                     // Create release
                     gitClient.Fetch();
                     gitClient.CheckoutRemoteBranch(Common.DevelopBranch);
-                    var release = CreateRelease(gitHubClient, gitHubRepo, gitClient);
+                    var release = CreateRelease(gitHubClient, gitHubRepo, gitClient, repoName);
 
                     Logger.Info("Release Successful!");
                     Logger.Info("Release hash: {0}", gitClient.GetHeadCommit().Sha);
@@ -104,7 +104,7 @@ namespace ReleaseTool
             return 0;
         }
 
-        private Release CreateRelease(GitHubClient gitHubClient, Repository gitHubRepo, GitClient gitClient)
+        private Release CreateRelease(GitHubClient gitHubClient, Repository gitHubRepo, GitClient gitClient, string repoName)
         {
             Logger.Info("Running packer...");
             var package = Packer.Program.Package(gitClient.RepositoryPath);
@@ -118,8 +118,24 @@ namespace ReleaseTool
                 releaseBody = GetReleaseNotesFromChangeLog();
             }
 
-            var release = gitHubClient.CreateDraftRelease(gitHubRepo, options.Version, releaseBody, options.Version,
-                headCommit);
+            string name;
+
+            switch (repoName)
+            {
+                case "gdk-for-unity":
+                    name = $"GDK for Unity Alpha Release {options.Version}";
+                    break;
+                case "gdk-for-unity-fps-starter-project":
+                    name = $"GDK for Unity FPS Starter Project Alpha Release {options.Version}";
+                    break;
+                case "gdk-for-unity-blank-project":
+                    name = $"GDK for Unity Blank Project Alpha Release {options.Version}";
+                    break;
+                default:
+                    throw new ArgumentException("Unsupported repository.", nameof(repoName));
+            }
+
+            var release = gitHubClient.CreateDraftRelease(gitHubRepo, options.Version, releaseBody, name, headCommit);
 
             using (var reader = File.OpenRead(package))
             {

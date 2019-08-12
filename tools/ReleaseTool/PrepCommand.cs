@@ -311,7 +311,7 @@ namespace ReleaseTool
                 changedHeaderIndex = changedIndexes[0];
             }
 
-            changelog.Insert(changedHeaderIndex + 1, string.Format(ChangeLogUpdateGdkTemplate, options.Version));
+            changelog.Insert(changedHeaderIndex + 2, string.Format(ChangeLogUpdateGdkTemplate, options.Version));
         }
 
         private void UpdatePackerConfig(GitClient gitClient)
@@ -400,8 +400,10 @@ namespace ReleaseTool
 	- [ ] local client
 	- [ ] cloud client
 - Session based flow
-	- [ ] PC
-	- [ ] Mobile";
+	- [ ] Windows
+    - [ ] Mac
+	- [ ] Android
+    - [ ] iOS";
                 case "gdk-for-unity-blank-project":
                     return @"#### Description
 - Package versions
