@@ -100,6 +100,11 @@ namespace ReleaseTool
             return mergePullRequestTask.Result;
         }
 
+        public void DeleteBranch(Repository repository, string branch)
+        {
+            octoClient.Git.Reference.Delete(repository.Id, $"refs/heads/{branch}").Wait();
+        }
+
         public Release CreateDraftRelease(Repository repository, string tag, string body, string name, string commitish)
         {
             var releaseTask = octoClient.Repository.Release.Create(repository.Id, new NewRelease(tag)

@@ -28,13 +28,11 @@ namespace ReleaseTool
         private const string PackageJsonVersionString = "version";
         private const string PackageJsonDependenciesString = "dependencies";
         private const string PackageJsonDependenciesPrefix = "io.improbable.gdk";
-        private const string GithubBotUser = "gdk-for-unity-bot";
 
         private const string CommitMessageTemplate = "Release candidate for version {0}.";
 
         private const string ChangeLogFilename = "CHANGELOG.md";
         private const string ChangeLogReleaseHeadingTemplate = "## `{0}` - {1:yyyy-MM-dd}";
-        private const string ReleaseBranchNameTemplate = "feature/release-{0}";
 
         private const string PullRequestTemplate = "Release {0} - Pre-Validation";
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
@@ -88,7 +86,7 @@ namespace ReleaseTool
          */
         public int Run()
         {
-            var remoteUrl = string.Format(Common.RemoteUrlTemplate, GithubBotUser, options.GitRepoName);
+            var remoteUrl = string.Format(Common.RemoteUrlTemplate, Common.GithubBotUser, options.GitRepoName);
 
             try
             {
@@ -132,14 +130,14 @@ namespace ReleaseTool
                     }
 
                     // This does step 5 from above.
-                    var branchName = string.Format(ReleaseBranchNameTemplate, options.Version);
+                    var branchName = string.Format(Common.ReleaseBranchNameTemplate, options.Version);
                     gitClient.Commit(string.Format(CommitMessageTemplate, options.Version));
                     gitClient.ForcePush(branchName);
 
                     // This does step 6 from above.
                     var gitHubRepo = gitHubClient.GetRepositoryFromRemote(spatialOsRemote);
 
-                    var branchFrom = $"{GithubBotUser}:{branchName}";
+                    var branchFrom = $"{Common.GithubBotUser}:{branchName}";
                     var branchTo = Common.DevelopBranch;
 
                     // Only open a PR if one does not exist yet.
