@@ -76,7 +76,7 @@ namespace ReleaseTool
                 // Delete remote on the forked repository.
                 var forkedRepoRemote = string.Format(Common.RemoteUrlTemplate, Common.GithubBotUser, repoName);
                 var branchName = string.Format(Common.ReleaseBranchNameTemplate, options.Version);
-                gitHubClient.DeleteBranch(gitHubClient.GetRepositoryFromRemote(forkedRepoRemote), branchName);
+                // gitHubClient.DeleteBranch(gitHubClient.GetRepositoryFromRemote(forkedRepoRemote), branchName);
 
                 var remoteUrl = string.Format(Common.RemoteUrlTemplate, Common.SpatialOsOrg, repoName);
 
