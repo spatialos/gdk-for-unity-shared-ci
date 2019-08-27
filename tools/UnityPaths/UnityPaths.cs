@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 
 namespace UnityPaths
@@ -38,8 +39,25 @@ namespace UnityPaths
                 return UnityHomeValue;
             }
 
-            var projectVersion = File.ReadAllText(Path.Combine("ProjectSettings", "ProjectVersion.txt"))
-                .Remove(0, "m_EditorVersion:".Length).Trim();
+            var projectVersion = string.Empty;
+            var projectVersionPath = Path.Combine("ProjectSettings", "ProjectVersion.txt");
+            var versionLines = File.ReadAllLines(projectVersionPath);
+            foreach (var line in versionLines)
+            {
+                if (!line.StartsWith("m_EditorVersion:"))
+                {
+                    continue;
+                }
+
+                projectVersion = line.Remove(0, "m_EditorVersion:".Length).Trim();
+                break;
+            }
+
+            if (string.IsNullOrEmpty(projectVersion))
+            {
+                throw new Exception($"Could not parse ProjectVersion.txt for Unity version.");
+            }
+
 
             var improbableUnityPath = Path.Combine(ImprobableUnityRootPath, $"{projectVersion}");
             if (Directory.Exists(improbableUnityPath))
@@ -65,7 +83,7 @@ namespace UnityPaths
             }
 
             throw new Exception(
-                $"Could not find Unity in\n  {UnityHomeEnvVar}={UnityHomeValue}\n  {improbableUnityPath}\n  {hubPath}\n  {DefaultUnityPath}");
+                $"Could not find Unity in\n[{improbableUnityPath}]\n[{hubPath}]\n[{DefaultUnityPath}]");
         }
 
         public static void PrintHelp()

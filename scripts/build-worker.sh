@@ -18,12 +18,6 @@ fi
 source "$(dirname "$0")/pinned-tools.sh"
 
 pushd "$(dirname "$0")/../"
-    if [[ "${WORKER_TYPE}" == "MobileClient" ]]; then
-        if [[ ${BUILD_TARGET_FILTER-} != "ios" ]]; then
-            scripts/prepare-unity-android.sh "$(pwd)/../logs/PrepareUnityAndroid.log"
-        fi
-    fi
-
     # The asset cache ip cannot be hardcoded and so is stored in an environment variable on the build agent.
     # This is bash shorthand syntax for if-else predicated on the existance of the environment variable
     # where the else branch assigns an empty string.
