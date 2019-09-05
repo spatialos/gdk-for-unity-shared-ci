@@ -340,8 +340,9 @@ namespace ReleaseTool
                 throw new InvalidOperationException("Could not upgrade gdk version as the file, " +
                     $"{gdkPinnedFilename}, does not exist");
             }
-
-            File.WriteAllText(gdkPinnedFilename, newPinnedVersion);
+            
+            // Pin is always to develop in this case.
+            File.WriteAllText(gdkPinnedFilename, $"{Common.DevelopBranch} {newPinnedVersion}");
 
             gitClient.StageFile(gdkPinnedFilename);
         }
