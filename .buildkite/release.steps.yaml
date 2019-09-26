@@ -5,7 +5,7 @@ common: &common
     - "environment=production"
     - "permission_set=builder"
     - "platform=linux"  # if you need a different platform, configure this: macos|linux|windows.
-    - "queue=v3-1562766449-11b126f880607f28-------z"
+    - "queue=v3-1568738590-4881a8663c5d900a-------z"
     - "scaler_version=2"
   timeout_in_minutes: 60 # TODO(ENG-548): reduce timeout once agent-cold-start is optimised.
   retry:
@@ -46,6 +46,12 @@ steps:
   - label: Release GDK for Unity
     command: ci/release.sh gdk-for-unity
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    
+  - wait
+
+  - label: Publish GDK for Unity packages
+    command: ci/publish-pacakges.sh
+    <<: *common
 
   - wait
 
