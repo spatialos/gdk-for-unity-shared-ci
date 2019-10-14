@@ -50,7 +50,7 @@ steps:
   - wait
 
   - label: Publish GDK for Unity packages
-    command: ci/publish-pacakges.sh
+    command: ci/publish-packages.sh
     <<: *common
 
   - wait
