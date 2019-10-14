@@ -32,5 +32,6 @@ ENV CLOUDSMITH_CONFIG_DIR "/var/cloudsmith_credentials"
 WORKDIR /usr/src/
 COPY gdk-for-unity ./gdk-for-unity
 COPY ./ci/docker/publish-packages-entrypoint.sh ./entrypoint.sh
+RUN ["chmod", "+x", "./entrypoint.sh"]
 
 ENTRYPOINT ["./entrypoint.sh"]
