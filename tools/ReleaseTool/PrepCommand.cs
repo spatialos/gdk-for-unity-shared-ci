@@ -27,7 +27,7 @@ namespace ReleaseTool
         private const string PackageJsonNameKey = "name";
         private const string PackageJsonVersionString = "version";
         private const string PackageJsonDependenciesString = "dependencies";
-        private const string PackageJsonDependenciesPrefix = "io.improbable.gdk";
+        private const string PackageJsonDependenciesPrefix = "io.improbable";
 
         private const string CommitMessageTemplate = "Release candidate for version {0}.";
 
