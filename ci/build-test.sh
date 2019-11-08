@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+### This script should only be run on Improbable's internal build machines.
+### If you don't work at Improbable, this may be interesting as a guide to what software versions we use for our
+### automation, but not much more than that.
+
 set -e -u -o pipefail
 
 if [[ -n "${DEBUG-}" ]]; then
@@ -8,13 +12,15 @@ fi
 
 cd "$(dirname "$0")/../"
 
-source scripts/pinned-tools.sh
+echo "--- Setting up premerge :gear:"
+docker build \
+    --tag local:shared-ci-premerge \
+    --file ./ci/docker/premerge.Dockerfile \
+    .
 
-echo "--- Build Tools.sln :construction:"
-dotnet build tools/Tools.sln
+mkdir -p ./logs
 
-echo "--- Test DocsLinter.csproj :link:"
-dotnet test --logger:"nunit;LogFilePath=$(pwd)/logs/docslinter-test-results.xml" "tools/DocsLinter/DocsLinter.csproj"
-
-echo "--- Test ReleaseTool.csproj :fork:"
-dotnet test --logger:"nunit;LogFilePath=$(pwd)/logs/releasetool-test-results.xml" "tools/ReleaseTool.Tests/ReleaseTool.Tests.csproj"
+echo "--- Running premerge :running:"
+docker run --rm \
+    -v "$(pwd)"/logs:/var/logs \
+    shared-ci-premerge

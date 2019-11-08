@@ -12,11 +12,9 @@ common: &common
     - "capable_of_building=gdk-for-unity"
     - "environment=production"
     - "permission_set=builder"
-    - "platform=windows"
-    - "queue=v3-1570547724-22c6030099a0f41d-------z"
+    - "platform=linux"  # if you need a different platform, configure this: macos|linux|windows.
+    - "queue=v3-1568738590-4881a8663c5d900a-------z"
     - "scaler_version=2"
-    - "agent_count=1"
-    - "machine_type=quad"
   timeout_in_minutes: 60 # TODO(ENG-548): reduce timeout once agent-cold-start is optimised.
   retry:
     automatic:
@@ -33,7 +31,26 @@ common: &common
 # NOTE: step labels turn into commit-status names like {org}/{repo}/{pipeline}/{step-label}, lower-case and hyphenated.
 # These are then relied on to have stable names by other things, so once named, please beware renaming has consequences.
 
+dag: true
+
 steps:
   - label: "build :bash:"
+    id: "build-test"
     command: bash -c ci/build-test.sh
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    artifact_paths:
+      - logs/**/*
+
+  - label: "annotate test results :pencil2:"
+    depends_on:
+      - step: "build-test"
+        allow_failure: true
+    plugins:
+      - improbable/test-summary#ea146cdfbbc0db1ce8a8f93131f3f4a382d912a1:
+          inputs:
+            - label: ":octagonal_sign: Test failures "
+              artifact_path: "logs/nunit/*.xml"
+              type: nunit
+          formatter:
+            type: details
+    <<: *common
