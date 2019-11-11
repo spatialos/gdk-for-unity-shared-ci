@@ -14,7 +14,7 @@ cd "$(dirname "$0")/../"
 
 echo "--- Setting up premerge :gear:"
 docker build \
-    --tag local:shared-ci-premerge \
+    --tag shared-ci-premerge \
     --file ./ci/docker/premerge.Dockerfile \
     .
 
