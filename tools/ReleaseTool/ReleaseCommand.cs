@@ -72,7 +72,7 @@ namespace ReleaseTool
                     throw new InvalidOperationException(
                         $"Was unable to merge pull request at: {options.PullRequestUrl}. Received error: {mergeResult.Message}");
                 }
-                
+
                 // Delete remote on the forked repository.
                 var forkedRepoRemote = string.Format(Common.RemoteUrlTemplate, Common.GithubBotUser, repoName);
                 var branchName = string.Format(Common.ReleaseBranchNameTemplate, options.Version);
@@ -117,28 +117,52 @@ namespace ReleaseTool
             var headCommit = gitClient.GetHeadCommit().Sha;
 
 
-            string releaseBody;
+            string changelog;
             using (new WorkingDirectoryScope(gitClient.RepositoryPath))
             {
-                releaseBody = GetReleaseNotesFromChangeLog();
+                changelog = GetReleaseNotesFromChangeLog();
             }
 
             string name;
+            string preamble;
 
             switch (repoName)
             {
                 case "gdk-for-unity":
                     name = $"GDK for Unity Alpha Release {options.Version}";
+                    preamble =
+@"In this release, we've ...
+
+We've also fixed ... 
+
+Keep giving us your feedback and/or suggestions! Check out [our Discord](https://discord.gg/SCZTCYm), [our forums](https://forums.improbable.io/), or here in the [Github issues](https://github.com/spatialos/gdk-for-unity/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)!
+
+See the full release notes below! 👇";
                     break;
                 case "gdk-for-unity-fps-starter-project":
                     name = $"GDK for Unity FPS Starter Project Alpha Release {options.Version}";
+                    preamble =
+$@"This release of the FPS Starter Project is intended for use with the GDK for Unity Alpha Release {options.Version}.
+
+Keep giving us your feedback and/or suggestions! Check out [our Discord](https://discord.gg/SCZTCYm), [our forums](https://forums.improbable.io/), or here in the [Github issues](https://github.com/spatialos/gdk-for-unity/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)!";
                     break;
                 case "gdk-for-unity-blank-project":
                     name = $"GDK for Unity Blank Project Alpha Release {options.Version}";
+                    preamble =
+$@"This release of the Blank Project is intended for use with the GDK for Unity Alpha Release {options.Version}.
+
+Keep giving us your feedback and/or suggestions! Check out [our Discord](https://discord.gg/SCZTCYm), [our forums](https://forums.improbable.io/), or here in the [Github issues](https://github.com/spatialos/gdk-for-unity/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)!";
                     break;
                 default:
                     throw new ArgumentException("Unsupported repository.", nameof(repoName));
             }
+
+            var releaseBody =
+$@"{preamble}
+
+---
+
+{changelog}";
 
             var release = gitHubClient.CreateDraftRelease(gitHubRepo, options.Version, releaseBody, name, headCommit);
 

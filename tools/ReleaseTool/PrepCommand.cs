@@ -340,7 +340,7 @@ namespace ReleaseTool
                 throw new InvalidOperationException("Could not upgrade gdk version as the file, " +
                     $"{gdkPinnedFilename}, does not exist");
             }
-            
+
             // Pin is always to develop in this case.
             File.WriteAllText(gdkPinnedFilename, $"{Common.DevelopBranch} {newPinnedVersion}");
 
@@ -397,12 +397,7 @@ namespace ReleaseTool
 	- [ ] cloud client
 - iOS
 	- [ ] local client
-	- [ ] cloud client
-- Session based flow
-	- [ ] Windows
-    - [ ] Mac
-	- [ ] Android
-    - [ ] iOS";
+	- [ ] cloud client";
                 case "gdk-for-unity-blank-project":
                     return @"#### Description
 - Package versions
