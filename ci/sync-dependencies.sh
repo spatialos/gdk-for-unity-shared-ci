@@ -12,17 +12,23 @@ fi
 
 cd "$(dirname "$0")/../"
 
-DOTNET_URL="https://download.visualstudio.microsoft.com/download/pr/7430e32b-092b-4448-add7-2dcf40a7016d/1076952734fbf775062b48344d1a1587/dotnet-sdk-2.2.402-osx-x64.pkg"
-DOTNET_FILE="dotnet-sdk-2.2.402-osx-x64.pkg"
-
-BUCKET_ROOT="gs://io-internal-infra-dependencies-${BUILDKITE_AGENT_META_DATA_ENVIRONMENT}/spatialos/gdk-for-unity"
+DEPENDENCY_FILE="dependencies.pinned"
 
 echo "--- Creating temp directory"
 STAGING_DIR=$(mktemp -d)
+mkdir -p "${STAGING_DIR}/macos"
+mkdir -p "${STAGING_DIR}/win"
+mkdir -p "${STAGING_DIR}/linux"
 echo "${STAGING_DIR}"
 
-echo "--- Downloading dotnet installer"
-curl "${DOTNET_URL}" --output "${STAGING_DIR}/${DOTNET_FILE}"
+cat "${DEPENDENCY_FILE}" | while read -r LINE; do
+  DEST_FILEPATH=$(echo "${LINE}" | cut -d" " -f1)
+  DOWNLOAD_URL=$(echo "${LINE}" | cut -d" " -f2)
+
+  echo "--- Downloading ${DEST_FILEPATH}"
+  curl "${DOWNLOAD_URL}" --output "${STAGING_DIR}/${DEST_FILEPATH}"
+done
 
 echo "--- Syncing to GCS"
-gsutil -m rsync "${STAGING_DIR}" "${BUCKET_ROOT}/"
+BUCKET_ROOT="gs://io-internal-infra-dependencies-${BUILDKITE_AGENT_META_DATA_ENVIRONMENT}/spatialos/gdk-for-unity"
+gsutil -m rsync -r "${STAGING_DIR}" "${BUCKET_ROOT}/"
