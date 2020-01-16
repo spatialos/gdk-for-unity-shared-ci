@@ -1,0 +1,20 @@
+---
+linux: &linux
+  agents:
+    - "capable_of_building=gdk-for-unity"
+    - "environment=production"
+    - "permission_set=pusher"
+    - "platform=linux"  # if you need a different platform, configure this: macos|linux|windows.
+    - "queue=v3-1568738590-4881a8663c5d900a-------z"
+    - "scaler_version=2"
+  timeout_in_minutes: 60 # TODO(ENG-548): reduce timeout once agent-cold-start is optimised.
+  retry:
+    automatic:
+        # This is designed to trap and retry failures because agent lost connection. Agent exits with -1 in this case.
+      - exit_status: -1
+        limit: 3
+
+steps:
+  - label: "Sync dependencies to GCS"
+    command: bash -c ci/sync-dependencies.sh
+    <<: *linux # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
