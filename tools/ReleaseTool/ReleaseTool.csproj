@@ -12,7 +12,4 @@
     <PackageReference Include="NLog" Version="4.6.0-rc3" />
     <PackageReference Include="Octokit" Version="0.32.0" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Packer\Packer.csproj" />
-  </ItemGroup>
 </Project>

@@ -111,12 +111,8 @@ namespace ReleaseTool
 
         private Release CreateRelease(GitHubClient gitHubClient, Repository gitHubRepo, GitClient gitClient, string repoName)
         {
-            Logger.Info("Running packer...");
-            var package = Packer.Program.Package(gitClient.RepositoryPath);
-
             var headCommit = gitClient.GetHeadCommit().Sha;
-
-
+            
             string changelog;
             using (new WorkingDirectoryScope(gitClient.RepositoryPath))
             {
@@ -164,14 +160,7 @@ $@"{preamble}
 
 {changelog}";
 
-            var release = gitHubClient.CreateDraftRelease(gitHubRepo, options.Version, releaseBody, name, headCommit);
-
-            using (var reader = File.OpenRead(package))
-            {
-                gitHubClient.AddAssetToRelease(release, Path.GetFileName(package), PackageContentType, reader);
-            }
-
-            return release;
+            return gitHubClient.CreateDraftRelease(gitHubRepo, options.Version, releaseBody, name, headCommit);
         }
 
         private static (string, int) ExtractPullRequestInfo(string pullRequestUrl)

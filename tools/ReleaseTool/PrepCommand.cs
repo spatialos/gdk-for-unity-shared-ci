@@ -5,7 +5,6 @@ using System.Linq;
 using CommandLine;
 using Newtonsoft.Json.Linq;
 using NLog;
-using Packer;
 
 namespace ReleaseTool
 {
@@ -108,7 +107,6 @@ namespace ReleaseTool
                     {
                         UpdateManifestJson(gitClient);
                         UpdateAllPackageJsons(gitClient);
-                        UpdatePackerConfig(gitClient);
 
                         if (options.ShouldUpdateGdkVersion)
                         {
@@ -310,23 +308,6 @@ namespace ReleaseTool
             }
 
             changelog.Insert(changedHeaderIndex + 2, string.Format(ChangeLogUpdateGdkTemplate, options.Version));
-        }
-
-        private void UpdatePackerConfig(GitClient gitClient)
-        {
-            if (!File.Exists(PackerConfigFile))
-            {
-                return;
-            }
-
-            Logger.Info("Updating {0}...", PackerConfigFile);
-
-            var config = ConfigModel.FromFile(PackerConfigFile);
-            config.Version = options.Version;
-
-            config.ToFile(PackerConfigFile);
-
-            gitClient.StageFile(PackerConfigFile);
         }
 
         private static void UpdateGdkVersion(GitClient gitClient, string newPinnedVersion)
