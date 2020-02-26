@@ -1,4 +1,4 @@
-﻿using Markdig;
+using Markdig;
 using Markdig.Syntax.Inlines;
 using NUnit.Framework;
 

@@ -25,7 +25,7 @@ namespace ReleaseTool
             {
                 throw new ArgumentException($"Cannot create a {nameof(BuildkiteMetadataSink)}. Metadata file path is null or empty.");
             }
-            
+
             outputFile = File.AppendText(options.MetadataFilePath);
         }
 

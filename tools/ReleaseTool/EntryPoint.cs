@@ -1,4 +1,4 @@
-﻿using CommandLine;
+using CommandLine;
 using NLog;
 
 namespace ReleaseTool
@@ -8,7 +8,7 @@ namespace ReleaseTool
         private static int Main(string[] args)
         {
             ConfigureLogger();
-            
+
             return Parser.Default.ParseArguments<PrepCommand.Options, ReleaseCommand.Options>(args)
                 .MapResult(
                     (PrepCommand.Options options) => new PrepCommand(options).Run(),
@@ -19,13 +19,13 @@ namespace ReleaseTool
         private static void ConfigureLogger()
         {
             var config = new NLog.Config.LoggingConfiguration();
-            
+
             var logfile = new NLog.Targets.FileTarget("logfile")
             {
                 FileName = "release-tool.log"
             };
             var logconsole = new NLog.Targets.ConsoleTarget("logconsole");
-            
+
             config.AddRule(LogLevel.Info, LogLevel.Fatal, logconsole);
             config.AddRule(LogLevel.Debug, LogLevel.Fatal, logfile);
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -112,7 +112,7 @@ namespace ReleaseTool
         private Release CreateRelease(GitHubClient gitHubClient, Repository gitHubRepo, GitClient gitClient, string repoName)
         {
             var headCommit = gitClient.GetHeadCommit().Sha;
-            
+
             string changelog;
             using (new WorkingDirectoryScope(gitClient.RepositoryPath))
             {

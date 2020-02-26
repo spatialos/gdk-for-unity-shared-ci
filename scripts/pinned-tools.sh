@@ -33,12 +33,14 @@ fi
 
 # Print the .NETCore version to aid debugging,
 # as well as ensuring that later calls to the tool don't print the welcome message on first run.
-dotnet --version
+if ! isLinux; then
+  dotnet --version
 
-DOTNET_VERSION="$(dotnet --version)"
+  DOTNET_VERSION="$(dotnet --version)"
 
-if isWindows; then
-  export MSBuildSDKsPath="${PROGRAMFILES}/dotnet/sdk/${DOTNET_VERSION}/Sdks"
+  if isWindows; then
+    export MSBuildSDKsPath="${PROGRAMFILES}/dotnet/sdk/${DOTNET_VERSION}/Sdks"
+  fi
 fi
 
 # Creates an assembly name based on an argument (used as a prefix) and the current Git hash.

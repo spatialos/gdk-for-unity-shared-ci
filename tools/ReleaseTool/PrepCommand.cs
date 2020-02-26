@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -218,7 +218,7 @@ namespace ReleaseTool
                     var dependencies = (JObject) jsonObject[PackageJsonDependenciesString];
 
                     foreach (var property in dependencies.Properties())
-                        // If it's an Improbable package and it's not a "file:" reference.
+                    // If it's an Improbable package and it's not a "file:" reference.
                     {
                         if (property.Name.StartsWith(PackageJsonDependenciesPrefix) &&
                             !((string) property.Value).StartsWith("file:"))

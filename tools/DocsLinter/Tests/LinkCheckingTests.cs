@@ -1,4 +1,4 @@
-﻿using Markdig.Syntax.Inlines;
+using Markdig.Syntax.Inlines;
 using NUnit.Framework;
 
 namespace DocsLinter.Tests

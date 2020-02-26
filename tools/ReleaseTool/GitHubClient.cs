@@ -1,4 +1,4 @@
-﻿using CommandLine;
+using CommandLine;
 using Octokit;
 using System;
 using System.IO;
@@ -81,7 +81,7 @@ namespace ReleaseTool
 
         public PullRequest CreatePullRequest(Repository repository, string branchFrom, string branchTo, string pullRequestTitle, string body)
         {
-            var newPullRequest = new NewPullRequest(pullRequestTitle, branchFrom, branchTo) {Body = body};
+            var newPullRequest = new NewPullRequest(pullRequestTitle, branchFrom, branchTo) { Body = body };
 
             var createPullRequestTask = octoClient.PullRequest.Create(repository.Id, newPullRequest);
 
@@ -123,7 +123,7 @@ namespace ReleaseTool
             var uploadAssetTask = octoClient.Repository.Release.UploadAsset(release, new ReleaseAssetUpload(fileName, contentType, data, null));
             return uploadAssetTask.Result;
         }
-        
+
         private void LoadCredentials()
         {
             if (!string.IsNullOrEmpty(options.GitHubToken))
@@ -136,7 +136,7 @@ namespace ReleaseTool
                 {
                     throw new ArgumentException($"Failed to get GitHub Token as the file specified at {options.GitHubTokenFile} does not exist.");
                 }
-                
+
                 octoClient.Credentials = new Credentials(File.ReadAllText(
                     Common.ReplaceHomePath(options.GitHubTokenFile)));
             }

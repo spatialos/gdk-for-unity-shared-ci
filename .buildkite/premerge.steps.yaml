@@ -7,7 +7,7 @@
 # You may find the example pipeline steps listed here helpful: https://buildkite.com/docs/pipelines/defining-steps#example-pipeline but please
 #  note that the setup is already done, so you should not manually adjust anything through the BuildKite interface.
 #
-common: &common
+linux: &linux
   agents:
     - "capable_of_building=gdk-for-unity"
     - "environment=production"
@@ -34,10 +34,15 @@ common: &common
 dag: true
 
 steps:
+
+  - label: "lint"
+    command: bash -c ci/lint.sh
+    <<: *linux
+
   - label: "build :bash:"
     id: "build-test"
     command: bash -c ci/build-test.sh
-    <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
+    <<: *linux # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
     artifact_paths:
       - logs/**/*
 
@@ -53,4 +58,4 @@ steps:
               type: nunit
           formatter:
             type: details
-    <<: *common
+    <<: *linux

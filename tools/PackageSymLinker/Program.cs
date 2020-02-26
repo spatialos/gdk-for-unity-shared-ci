@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -178,13 +178,13 @@ namespace PackageSymLinker
             {
                 throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourcePath}");
             }
-            
+
             // If the destination directory doesn't exist, create it.
             if (!Directory.Exists(targetPath))
             {
                 Directory.CreateDirectory(targetPath);
             }
-            
+
             foreach (var file in dir.GetFiles())
             {
                 var temppath = Path.Combine(targetPath, file.Name);

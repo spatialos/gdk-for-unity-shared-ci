@@ -10,7 +10,7 @@ namespace ReleaseTool.Tests
         {
             Version = "test-version"
         };
-        
+
         private static PrepCommand.Options OptionsWithPin = new PrepCommand.Options
         {
             Version = "test-version",
@@ -35,7 +35,7 @@ namespace ReleaseTool.Tests
             PrepCommand.UpdateChangeLog(changelog, OptionsNoPin);
             Assert.AreEqual(previousCount, changelog.Count);
         }
-        
+
         [Test]
         public void UpdateChangelog_should_insert_a_heading_after_unreleased()
         {
@@ -47,9 +47,9 @@ namespace ReleaseTool.Tests
                 "",
                 "- Made some breaking changes"
             };
-            
+
             PrepCommand.UpdateChangeLog(changelog, OptionsNoPin);
-            
+
             Assert.IsTrue(changelog[2].StartsWith($"## `{OptionsNoPin.Version}` - "));
         }
 
@@ -68,11 +68,11 @@ namespace ReleaseTool.Tests
                 "",
                 "- Made some normal changes"
             };
-            
+
             var expectedLineCount = changelog.Count + 2; // The release header and an extra newline.
-            
+
             PrepCommand.UpdateChangeLog(changelog, OptionsNoPin);
-            
+
             Assert.AreEqual(expectedLineCount, changelog.Count);
         }
 
@@ -91,12 +91,12 @@ namespace ReleaseTool.Tests
                 "",
                 "- Made some normal changes"
             };
-            
+
             var expectedLineCount = changelog.Count + 3; // The release header, an extra newline, and the changed entry.
             var expectedLine = string.Format(PrepCommand.ChangeLogUpdateGdkTemplate, OptionsWithPin.Version);
-            
+
             PrepCommand.UpdateChangeLog(changelog, OptionsWithPin);
-            
+
             Assert.AreEqual(expectedLineCount, changelog.Count);
             Assert.Contains(expectedLine, changelog);
         }
@@ -126,14 +126,14 @@ namespace ReleaseTool.Tests
                 "",
                 "- Made some normal changes"
             };
-            
+
             var expectedLine = string.Format(PrepCommand.ChangeLogUpdateGdkTemplate, OptionsWithPin.Version);
             PrepCommand.UpdateChangeLog(changelog, OptionsWithPin);
 
             var newReleaseSection = changelog.TakeWhile(line => line != "## A Previous Release").ToList();
             Assert.Contains(expectedLine, newReleaseSection);
         }
-        
+
         [Test]
         public void UpdateChangelog_should_add_a_changed_section_line_if_not_there_if_gdk_pinned()
         {
@@ -158,7 +158,7 @@ namespace ReleaseTool.Tests
 
             var expectedChangeHeader = "### Changed";
             var expectedChangeLine = string.Format(PrepCommand.ChangeLogUpdateGdkTemplate, OptionsWithPin.Version);
-            
+
             PrepCommand.UpdateChangeLog(changelog, OptionsWithPin);
 
             var newReleaseSection = changelog.TakeWhile(line => line != "## A Previous Release").ToList();
