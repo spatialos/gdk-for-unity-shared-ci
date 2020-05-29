@@ -83,3 +83,7 @@ function isDocsBranch() {
   fi
   return 1
 }
+
+function getAcceleratorArgs() {
+  echo ${ACCELERATOR_ENDPOINT:+-adb2 -enableCacheServer -cacheServerEnableDownload true -cacheServerEnableUpload true -cacheServerEndpoint "${ACCELERATOR_ENDPOINT}"}
+}
