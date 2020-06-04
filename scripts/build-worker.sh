@@ -40,7 +40,7 @@ pushd "$(dirname "$0")/../"
     RUN_UNITY_PATH="$(pwd)/tools/RunUnity/RunUnity.csproj"
 
     pushd "$(pwd)/../workers/unity"
-        echo "--- ${BLOCK_MESSAGE} :hammer_and_wrench:"
+        echo "## imp-ci group-start ${BLOCK_MESSAGE} :hammer_and_wrench:"
 
         dotnet run -p "${RUN_UNITY_PATH}" -- \
             -projectPath "." \
@@ -56,7 +56,7 @@ pushd "$(dirname "$0")/../"
             "${BUILD_TARGET_FILTER_ARG}"
 
         if isMacOS && [[ "${BUILD_TARGET_FILTER-}" =~ "ios" ]]; then
-            echo "--- Building XCode Project :xcode:"
+            echo "## imp-ci group-start Building XCode Project :xcode:"
 
             dotnet run -p "${RUN_UNITY_PATH}" -- \
                 -projectPath "." \
@@ -65,6 +65,10 @@ pushd "$(dirname "$0")/../"
                 -logfile "$(pwd)/../../logs/${WORKER_TYPE}-${BUILD_ENVIRONMENT}-xcode-build.log" \
                 -executeMethod "Improbable.Gdk.Mobile.iOSUtils.Build" \
                 "${ACCELERATOR_ARGS}"
+
+            echo "## imp-ci group-end Building XCode Project :xcode:"
         fi
+
+        echo "## imp-ci group-end ${BLOCK_MESSAGE} :hammer_and_wrench:"
     popd
 popd

@@ -12,15 +12,21 @@ fi
 
 cd "$(dirname "$0")/../"
 
-echo "--- Setting up premerge :gear:"
+echo "## imp-ci group-start Setting up premerge :gear:"
+
 docker build \
     --tag shared-ci-premerge \
     --file ./ci/docker/premerge.Dockerfile \
     .
 
+echo "## imp-ci group-end Setting up premerge :gear:"
+
 mkdir -p ./logs
 
-echo "--- Running premerge :running:"
+echo "## imp-ci group-start Running premerge :running:"
+
 docker run --rm \
     -v "$(pwd)"/logs:/var/logs \
     shared-ci-premerge
+
+echo "## imp-ci group-end Running premerge :running:"

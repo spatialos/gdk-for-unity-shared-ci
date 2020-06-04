@@ -22,7 +22,7 @@ function cleanUnity() {
   rm -rf "${1}/Temp"
 }
 
-echo "--- Sourcing pinned tools :round_pushpin:"
+echo "## imp-ci group-start Sourcing pinned tools :round_pushpin:"
 
 # Ensure for the Mac TC agents that dotnet is on the path.
 if isMacOS; then
@@ -42,6 +42,8 @@ if ! isLinux; then
     export MSBuildSDKsPath="${PROGRAMFILES}/dotnet/sdk/${DOTNET_VERSION}/Sdks"
   fi
 fi
+
+echo "## imp-ci group-end Sourcing pinned tools :round_pushpin:"
 
 # Creates an assembly name based on an argument (used as a prefix) and the current Git hash.
 function setAssemblyName() {
@@ -67,8 +69,9 @@ function uploadAssembly() {
 
   setAssemblyName "${1}"
 
-  echo "--- Uploading assembly :outbox_tray:"
+  echo "## imp-ci group-start Uploading assembly :outbox_tray:"
   spatial cloud upload "${ASSEMBLY_NAME}" --log_level=debug --force --enable_pre_upload_check=false --project_name="${2}"
+  echo "## imp-ci group-end Uploading assembly :outbox_tray:"
 }
 
 function isDocsBranch() {

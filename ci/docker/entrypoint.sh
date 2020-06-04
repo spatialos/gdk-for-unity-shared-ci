@@ -18,11 +18,20 @@ chown -R user:user "$(pwd)/tools"
 TEST_RESULTS_DIR="/var/logs/nunit"
 gosu user mkdir -p "${TEST_RESULTS_DIR}"
 
-echo "--- Build Tools.sln :construction:"
+echo "## imp-ci group-start Build Tools.sln :construction:"
+
 gosu user dotnet build tools/Tools.sln
 
-echo "--- Test DocsLinter.csproj :link:"
+echo "## imp-ci group-end Build Tools.sln :construction:"
+
+echo "## imp-ci group-start Test DocsLinter.csproj :link:"
+
 gosu user dotnet test --logger:"nunit;LogFilePath=${TEST_RESULTS_DIR}/docslinter-test-results.xml" "tools/DocsLinter/DocsLinter.csproj"
 
-echo "--- Test ReleaseTool.csproj :fork:"
+echo "## imp-ci group-end Test DocsLinter.csproj :link:"
+
+echo "## imp-ci group-start Test ReleaseTool.csproj :fork:"
+
 gosu user dotnet test --logger:"nunit;LogFilePath=${TEST_RESULTS_DIR}/releasetool-test-results.xml" "tools/ReleaseTool.Tests/ReleaseTool.Tests.csproj"
+
+echo "## imp-ci group-end Test ReleaseTool.csproj :fork:"

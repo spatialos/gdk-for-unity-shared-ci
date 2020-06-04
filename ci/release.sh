@@ -27,7 +27,8 @@ setupReleaseTool
 
 mkdir -p ./logs
 
-echo "--- Releasing ${REPO} @ ${RELEASE_VERSION} :tada:"
+echo "## imp-ci group-start Releasing ${REPO} @ ${RELEASE_VERSION} :tada:"
+
 docker run \
     -v "${SECRETS_DIR}":/var/ssh \
     -v "${SECRETS_DIR}":/var/github \
@@ -38,5 +39,10 @@ docker run \
             --buildkite-metadata-path="/var/logs/bk-metadata" \
             --pull-request-url="${PR_URL}"
 
-echo "--- Writing metadata :pencil2:"
+echo "## imp-ci group-end Releasing ${REPO} @ ${RELEASE_VERSION} :tada:"
+
+echo "## imp-ci group-start Writing metadata :pencil2:"
+
 writeBuildkiteMetadata "./logs/bk-metadata"
+
+echo "## imp-ci group-end Writing metadata :pencil2:"

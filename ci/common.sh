@@ -3,7 +3,8 @@ function cleanUp() {
 }
 
 function setupReleaseTool() {
-    echo "--- Setting up release tool :gear:"
+    echo "## imp-ci group-start Setting up release tool :gear:"
+
     # Create temporary directory for secrets and set a trap to cleanup on exit.
     export SECRETS_DIR=$(mktemp -d)
     trap cleanUp EXIT
@@ -28,6 +29,8 @@ function setupReleaseTool() {
         --tag local:gdk-release-tool \
         --file ./ci/docker/release-tool.Dockerfile \
         .
+
+    echo "## imp-ci group-end Setting up release tool :gear:"
 }
 
 function writeBuildkiteMetadata() {
