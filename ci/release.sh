@@ -42,7 +42,5 @@ docker run \
 echo "## imp-ci group-end Releasing ${REPO} @ ${RELEASE_VERSION} :tada:"
 
 echo "## imp-ci group-start Writing metadata :pencil2:"
-
 writeBuildkiteMetadata "./logs/bk-metadata"
-
 echo "## imp-ci group-end Writing metadata :pencil2:"
