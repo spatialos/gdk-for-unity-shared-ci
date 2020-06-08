@@ -3,31 +3,34 @@ function cleanUp() {
 }
 
 function setupReleaseTool() {
-    echo "--- Setting up release tool :gear:"
-    # Create temporary directory for secrets and set a trap to cleanup on exit.
-    export SECRETS_DIR=$(mktemp -d)
-    trap cleanUp EXIT
+    source "$(dirname "$0")/../scripts/pinned-tools.sh"
 
-    imp-ci secrets read \
-        --environment=production \
-        --buildkite-org=improbable \
-        --secret-type=github-personal-access-token \
-        --secret-name=unity-gdk/github-bot-personal-access-token \
-        --field="token" \
-        --write-to="${SECRETS_DIR}/github_token"
+    traceStart "Setting up release tool :gear:"
+        # Create temporary directory for secrets and set a trap to cleanup on exit.
+        export SECRETS_DIR=$(mktemp -d)
+        trap cleanUp EXIT
 
-    imp-ci secrets read \
-        --environment=production \
-        --buildkite-org=improbable \
-        --secret-type=ssh-key \
-        --secret-name=unity-gdk/github-bot-ssh-key \
-        --field="privateKey" \
-        --write-to="${SECRETS_DIR}/id_rsa"
+        imp-ci secrets read \
+            --environment=production \
+            --buildkite-org=improbable \
+            --secret-type=github-personal-access-token \
+            --secret-name=unity-gdk/github-bot-personal-access-token \
+            --field="token" \
+            --write-to="${SECRETS_DIR}/github_token"
 
-    docker build \
-        --tag local:gdk-release-tool \
-        --file ./ci/docker/release-tool.Dockerfile \
-        .
+        imp-ci secrets read \
+            --environment=production \
+            --buildkite-org=improbable \
+            --secret-type=ssh-key \
+            --secret-name=unity-gdk/github-bot-ssh-key \
+            --field="privateKey" \
+            --write-to="${SECRETS_DIR}/id_rsa"
+
+        docker build \
+            --tag local:gdk-release-tool \
+            --file ./ci/docker/release-tool.Dockerfile \
+            .
+    traceEnd
 }
 
 function writeBuildkiteMetadata() {

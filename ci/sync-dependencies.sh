@@ -7,28 +7,33 @@
 set -e -u -o pipefail
 
 if [[ -n "${DEBUG-}" ]]; then
-  set -x
+    set -x
 fi
 
 cd "$(dirname "$0")/../"
 
+source "scripts/pinned-tools.sh"
+
 DEPENDENCY_FILE="dependencies.pinned"
 
-echo "--- Creating temp directory"
-STAGING_DIR=$(mktemp -d)
-mkdir -p "${STAGING_DIR}/macos"
-mkdir -p "${STAGING_DIR}/win"
-mkdir -p "${STAGING_DIR}/linux"
-echo "${STAGING_DIR}"
+traceStart "Creating temp directory"
+    STAGING_DIR=$(mktemp -d)
+    mkdir -p "${STAGING_DIR}/macos"
+    mkdir -p "${STAGING_DIR}/win"
+    mkdir -p "${STAGING_DIR}/linux"
+    echo "${STAGING_DIR}"
+traceEnd
 
 cat "${DEPENDENCY_FILE}" | while read -r LINE; do
-  DEST_FILEPATH=$(echo "${LINE}" | cut -d" " -f1)
-  DOWNLOAD_URL=$(echo "${LINE}" | cut -d" " -f2)
+    DEST_FILEPATH=$(echo "${LINE}" | cut -d" " -f1)
+    DOWNLOAD_URL=$(echo "${LINE}" | cut -d" " -f2)
 
-  echo "--- Downloading ${DEST_FILEPATH}"
-  curl "${DOWNLOAD_URL}" --output "${STAGING_DIR}/${DEST_FILEPATH}"
+    traceStart "Downloading ${DEST_FILEPATH}"
+        curl "${DOWNLOAD_URL}" --output "${STAGING_DIR}/${DEST_FILEPATH}"
+    traceEnd
 done
 
-echo "--- Syncing to GCS"
-BUCKET_ROOT="gs://io-internal-infra-dependencies-${BUILDKITE_AGENT_META_DATA_ENVIRONMENT}/spatialos/gdk-for-unity"
-gsutil -m rsync -r "${STAGING_DIR}" "${BUCKET_ROOT}/"
+traceStart "Syncing to GCS"
+    BUCKET_ROOT="gs://io-internal-infra-dependencies-${BUILDKITE_AGENT_META_DATA_ENVIRONMENT}/spatialos/gdk-for-unity"
+    gsutil -m rsync -r "${STAGING_DIR}" "${BUCKET_ROOT}/"
+traceEnd

@@ -7,17 +7,18 @@
 set -e -u -o pipefail
 
 if [[ -n "${DEBUG-}" ]]; then
-  set -x
+    set -x
 fi
 
 if [[ -z "$BUILDKITE" ]]; then
-  echo "This script is only to be run on Improbable CI."
-  exit 1
+    echo "This script is only to be run on Improbable CI."
+    exit 1
 fi
 
 cd "$(dirname "$0")/../"
 
-source ci/common.sh
+source "ci/common.sh"
+source "scripts/pinned-tools.sh"
 
 REPO="${1}"
 RELEASE_VERSION="$(buildkite-agent meta-data get release-version)"
@@ -27,16 +28,18 @@ setupReleaseTool
 
 mkdir -p ./logs
 
-echo "--- Releasing ${REPO} @ ${RELEASE_VERSION} :tada:"
-docker run \
-    -v "${SECRETS_DIR}":/var/ssh \
-    -v "${SECRETS_DIR}":/var/github \
-    -v "$(pwd)"/logs:/var/logs \
-    local:gdk-release-tool \
-        release "${RELEASE_VERSION}" \
-            --github-key-file="/var/github/github_token" \
-            --buildkite-metadata-path="/var/logs/bk-metadata" \
-            --pull-request-url="${PR_URL}"
+traceStart "Releasing ${REPO} @ ${RELEASE_VERSION} :tada:"
+    docker run \
+        -v "${SECRETS_DIR}":/var/ssh \
+        -v "${SECRETS_DIR}":/var/github \
+        -v "$(pwd)"/logs:/var/logs \
+        local:gdk-release-tool \
+            release "${RELEASE_VERSION}" \
+                --github-key-file="/var/github/github_token" \
+                --buildkite-metadata-path="/var/logs/bk-metadata" \
+                --pull-request-url="${PR_URL}"
+traceEnd
 
-echo "--- Writing metadata :pencil2:"
-writeBuildkiteMetadata "./logs/bk-metadata"
+traceStart "Writing metadata :pencil2:"
+    writeBuildkiteMetadata "./logs/bk-metadata"
+traceEnd

@@ -7,20 +7,24 @@
 set -e -u -o pipefail
 
 if [[ -n "${DEBUG-}" ]]; then
-  set -x
+    set -x
 fi
 
 cd "$(dirname "$0")/../"
 
-echo "--- Setting up premerge :gear:"
-docker build \
-    --tag shared-ci-premerge \
-    --file ./ci/docker/premerge.Dockerfile \
-    .
+source "scripts/pinned-tools.sh"
+
+traceStart "Setting up premerge :gear:"
+    docker build \
+        --tag shared-ci-premerge \
+        --file ./ci/docker/premerge.Dockerfile \
+        .
+traceEnd
 
 mkdir -p ./logs
 
-echo "--- Running premerge :running:"
-docker run --rm \
-    -v "$(pwd)"/logs:/var/logs \
-    shared-ci-premerge
+traceStart "Running premerge :running:"
+    docker run --rm \
+        -v "$(pwd)"/logs:/var/logs \
+        shared-ci-premerge
+traceEnd

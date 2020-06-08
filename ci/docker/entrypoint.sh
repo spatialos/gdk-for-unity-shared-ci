@@ -3,7 +3,7 @@
 set -e -u -o pipefail
 
 if [[ -n "${DEBUG-}" ]]; then
-  set -x
+    set -x
 fi
 
 USER_ID=${LOCAL_USER_ID:-999}
@@ -18,11 +18,16 @@ chown -R user:user "$(pwd)/tools"
 TEST_RESULTS_DIR="/var/logs/nunit"
 gosu user mkdir -p "${TEST_RESULTS_DIR}"
 
-echo "--- Build Tools.sln :construction:"
-gosu user dotnet build tools/Tools.sln
+source "$(dirname "$0")/pinned-tools.sh"
 
-echo "--- Test DocsLinter.csproj :link:"
-gosu user dotnet test --logger:"nunit;LogFilePath=${TEST_RESULTS_DIR}/docslinter-test-results.xml" "tools/DocsLinter/DocsLinter.csproj"
+traceStart "Build Tools.sln :construction:"
+    gosu user dotnet build tools/Tools.sln
+traceEnd
 
-echo "--- Test ReleaseTool.csproj :fork:"
-gosu user dotnet test --logger:"nunit;LogFilePath=${TEST_RESULTS_DIR}/releasetool-test-results.xml" "tools/ReleaseTool.Tests/ReleaseTool.Tests.csproj"
+traceStart "Test DocsLinter.csproj :link:"
+    gosu user dotnet test --logger:"nunit;LogFilePath=${TEST_RESULTS_DIR}/docslinter-test-results.xml" "tools/DocsLinter/DocsLinter.csproj"
+traceEnd
+
+traceStart "Test ReleaseTool.csproj :fork:"
+    gosu user dotnet test --logger:"nunit;LogFilePath=${TEST_RESULTS_DIR}/releasetool-test-results.xml" "tools/ReleaseTool.Tests/ReleaseTool.Tests.csproj"
+traceEnd

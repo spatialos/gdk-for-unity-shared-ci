@@ -7,17 +7,18 @@
 set -e -u -o pipefail
 
 if [[ -n "${DEBUG-}" ]]; then
-  set -x
+    set -x
 fi
 
 if [[ -z "$BUILDKITE" ]]; then
-  echo "This script is only to be run on Improbable CI."
-  exit 1
+    echo "This script is only to be run on Improbable CI."
+    exit 1
 fi
 
 cd "$(dirname "$0")/../"
 
-source ci/common.sh
+source "ci/common.sh"
+source "scripts/pinned-tools.sh"
 
 REPO="${1}"
 RELEASE_VERSION="$(buildkite-agent meta-data get release-version)"
@@ -26,23 +27,25 @@ setupReleaseTool
 
 mkdir -p ./logs
 
-echo "--- Preparing ${REPO} @ ${RELEASE_VERSION} :package:"
-if [[ "${REPO}" != "gdk-for-unity" ]]; then
-	PIN_HASH="$(buildkite-agent meta-data get gdk-for-unity-hash)"
-	PIN_ARG="--update-pinned-gdk=${PIN_HASH}"
-else
-	PIN_ARG=""
-fi
+traceStart "Preparing ${REPO} @ ${RELEASE_VERSION} :package:"
+    if [[ "${REPO}" != "gdk-for-unity" ]]; then
+        PIN_HASH="$(buildkite-agent meta-data get gdk-for-unity-hash)"
+        PIN_ARG="--update-pinned-gdk=${PIN_HASH}"
+    else
+        PIN_ARG=""
+    fi
 
-docker run \
-    -v "${SECRETS_DIR}":/var/ssh \
-    -v "${SECRETS_DIR}":/var/github \
-    -v "$(pwd)"/logs:/var/logs \
-    local:gdk-release-tool \
-        prep "${RELEASE_VERSION}" \
-        --git-repository-name="${REPO}" \
-        --github-key-file="/var/github/github_token" \
-        --buildkite-metadata-path="/var/logs/bk-metadata" ${PIN_ARG}
+    docker run \
+        -v "${SECRETS_DIR}":/var/ssh \
+        -v "${SECRETS_DIR}":/var/github \
+        -v "$(pwd)"/logs:/var/logs \
+        local:gdk-release-tool \
+            prep "${RELEASE_VERSION}" \
+            --git-repository-name="${REPO}" \
+            --github-key-file="/var/github/github_token" \
+            --buildkite-metadata-path="/var/logs/bk-metadata" ${PIN_ARG}
+traceEnd
 
-echo "--- Writing metadata :pencil2:"
-writeBuildkiteMetadata "./logs/bk-metadata"
+traceStart "Writing metadata :pencil2:"
+    writeBuildkiteMetadata "./logs/bk-metadata"
+traceEnd

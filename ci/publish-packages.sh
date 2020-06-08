@@ -36,7 +36,7 @@ function getSecrets() {
         sed -i '1s/^/[default]\napi_key=/' "${CLOUDSMITH_CONFIG_FILE}"
 
         trap deleteSecrets INT TERM EXIT
-    else 
+    else
         # TODO: Support MacOS/Linux?
         export SPATIAL_OAUTH_DIR="${LOCALAPPDATA}\\.improbable"
         export CLOUDSMITH_AUTH_DIR="${APPDATA}\\cloudsmith"
@@ -51,10 +51,12 @@ function deleteSecrets() {
 GDK_DIR="gdk-for-unity"
 
 if [[ -n "${DEBUG-}" ]]; then
-  set -x
+    set -x
 fi
 
 cd "$(dirname "$0")/../"
+
+source "scripts/pinned-tools.sh"
 
 if [[ -d "${GDK_DIR}" ]]; then
     rm -rf "${GDK_DIR}"

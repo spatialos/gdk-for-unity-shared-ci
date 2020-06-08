@@ -14,7 +14,7 @@ set -e -u -o pipefail
 #   ACCELERATOR_ENDPOINT
 
 if [[ -n "${DEBUG-}" ]]; then
-  set -x
+    set -x
 fi
 
 source "$(dirname "$0")/pinned-tools.sh"
@@ -40,31 +40,31 @@ pushd "$(dirname "$0")/../"
     RUN_UNITY_PATH="$(pwd)/tools/RunUnity/RunUnity.csproj"
 
     pushd "$(pwd)/../workers/unity"
-        echo "--- ${BLOCK_MESSAGE} :hammer_and_wrench:"
-
-        dotnet run -p "${RUN_UNITY_PATH}" -- \
-            -projectPath "." \
-            -batchmode \
-            -quit \
-            -logfile "${LOG_FILE}" \
-            -executeMethod "Improbable.Gdk.BuildSystem.WorkerBuilder.Build" \
-            "${ACCELERATOR_ARGS}" \
-            +buildWorkerTypes "${WORKER_TYPE}" \
-            +buildEnvironment "${BUILD_ENVIRONMENT}" \
-            +scriptingBackend "${SCRIPTING_BACKEND}" \
-            "${TARGET_IOS_SDK_ARG}" \
-            "${BUILD_TARGET_FILTER_ARG}"
-
-        if isMacOS && [[ "${BUILD_TARGET_FILTER-}" =~ "ios" ]]; then
-            echo "--- Building XCode Project :xcode:"
-
+        traceStart "${BLOCK_MESSAGE} :hammer_and_wrench:"
             dotnet run -p "${RUN_UNITY_PATH}" -- \
                 -projectPath "." \
                 -batchmode \
                 -quit \
-                -logfile "$(pwd)/../../logs/${WORKER_TYPE}-${BUILD_ENVIRONMENT}-xcode-build.log" \
-                -executeMethod "Improbable.Gdk.Mobile.iOSUtils.Build" \
-                "${ACCELERATOR_ARGS}"
-        fi
+                -logfile "${LOG_FILE}" \
+                -executeMethod "Improbable.Gdk.BuildSystem.WorkerBuilder.Build" \
+                "${ACCELERATOR_ARGS}" \
+                +buildWorkerTypes "${WORKER_TYPE}" \
+                +buildEnvironment "${BUILD_ENVIRONMENT}" \
+                +scriptingBackend "${SCRIPTING_BACKEND}" \
+                "${TARGET_IOS_SDK_ARG}" \
+                "${BUILD_TARGET_FILTER_ARG}"
+
+            if isMacOS && [[ "${BUILD_TARGET_FILTER-}" =~ "ios" ]]; then
+                traceStart "Building XCode Project :xcode:"
+                    dotnet run -p "${RUN_UNITY_PATH}" -- \
+                        -projectPath "." \
+                        -batchmode \
+                        -quit \
+                        -logfile "$(pwd)/../../logs/${WORKER_TYPE}-${BUILD_ENVIRONMENT}-xcode-build.log" \
+                        -executeMethod "Improbable.Gdk.Mobile.iOSUtils.Build" \
+                        "${ACCELERATOR_ARGS}"
+                traceEnd
+            fi
+        traceEnd
     popd
 popd
