@@ -13,8 +13,10 @@ chown -R user:user "${HOME}"
 chown -R user:user "./"
 chown -R user:user "/var/spatial_oauth"
 chown -R user:user "/var/cloudsmith_credentials"
+chown -R user:user "/var/npmrc"
 
 mkdir -p "${HOME}/.config"
 ln -s /var/cloudsmith_credentials "${HOME}/.config/cloudsmith"
+ln -s /var/npmrc/npmrc "${HOME}/.npmrc"
 
 gosu user /bin/bash -c "./gdk-for-unity/ci/publish_packages.sh"

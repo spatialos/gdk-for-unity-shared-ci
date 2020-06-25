@@ -9,7 +9,7 @@ set -e -u -o pipefail
 function getSecrets() {
     if [[ ${BUILDKITE:-} ]]; then
 
-        export SPATIAL_OAUTH_DIR=$(mktemp -d)
+        export SPATIAL_OAUTH_DIR=$(mktemp -d "${TMPDIR:-/tmp}/XXXXXXXXX")
         local SPATIAL_OAUTH_FILE="${SPATIAL_OAUTH_DIR}/oauth2/oauth2_refresh_token"
 
         imp-ci secrets read \
@@ -20,7 +20,7 @@ function getSecrets() {
             --field="token" \
             --write-to="${SPATIAL_OAUTH_FILE}"
 
-        export CLOUDSMITH_AUTH_DIR=$(mktemp -d)
+        export CLOUDSMITH_AUTH_DIR=$(mktemp -d "${TMPDIR:-/tmp}/XXXXXXXXX")
         local CLOUDSMITH_CONFIG_FILE="${CLOUDSMITH_AUTH_DIR}/credentials.ini"
 
         imp-ci secrets read \
@@ -35,6 +35,22 @@ function getSecrets() {
         # leave it in the format that cloudsmith expects. See https://github.com/cloudsmith-io/cloudsmith-cli#configuration
         sed -i '1s/^/[default]\napi_key=/' "${CLOUDSMITH_CONFIG_FILE}"
 
+        export NPMRC_DIR=$(mktemp -d "${TMPDIR:-/tmp}/XXXXXXXXX")
+        local NPMRC_FILE="${NPMRC_DIR}/npmrc"
+
+        # TODO: Read secret and setup .npmrc file to mount into the docker container
+        imp-ci secrets read \
+            --environment="production" \
+            --secret-type="generic-token" \
+            --buildkite-org="improbable" \
+            --secret-name="unity/npm-spatialos-china-dogbot" \
+            --field="token" \
+            --write-to="${NPMRC_FILE}"
+
+        # We don't want to write the API key to the console, so we use sed to append the contents to the front of the file to
+        # leave it in the format that npm expects.
+        sed -i '1s/^/email=gdk-for-unity-bot@improbable.io\nalways-auth=true\n_auth=/' "${NPMRC_FILE}"
+
         trap deleteSecrets INT TERM EXIT
     else
         # TODO: Support MacOS/Linux?
@@ -46,6 +62,7 @@ function getSecrets() {
 function deleteSecrets() {
     rm -rf "${SPATIAL_OAUTH_DIR}"
     rm -rf "${CLOUDSMITH_AUTH_DIR}"
+    rm -rf "${NPMRC_DIR}"
 }
 
 GDK_DIR="gdk-for-unity"
@@ -89,5 +106,6 @@ fi
 docker run -it \
     --volume "${SPATIAL_OAUTH_DIR}":/var/spatial_oauth \
     --volume "${CLOUDSMITH_AUTH_DIR}":/var/cloudsmith_credentials \
+    --volume "${NPMRC_DIR}":/var/npmrc \
     ${EXTRA_DOCKER_ARGS} \
     local:gdk-publish-packages

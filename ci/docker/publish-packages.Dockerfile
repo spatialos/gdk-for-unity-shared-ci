@@ -25,6 +25,7 @@ ENV PATH "${PATH}:/build/tools/"
 # Setup volumes to mount our secrets into.
 VOLUME /var/spatial_oauth
 VOLUME /var/cloudsmith_credentials
+VOLUME /var/npmrc
 ENV IMPROBABLE_CONFIG_DIR "/var/spatial_oauth/"
 ENV CLOUDSMITH_CONFIG_DIR "/var/cloudsmith_credentials"
 
