@@ -44,6 +44,7 @@ pushd "$(dirname "$0")/../"
             dotnet run -p "${RUN_UNITY_PATH}" -- \
                 -projectPath "." \
                 -batchmode \
+                -nographics \
                 -quit \
                 -logfile "${LOG_FILE}" \
                 -executeMethod "Improbable.Gdk.BuildSystem.WorkerBuilder.Build" \
@@ -59,6 +60,7 @@ pushd "$(dirname "$0")/../"
                     dotnet run -p "${RUN_UNITY_PATH}" -- \
                         -projectPath "." \
                         -batchmode \
+                        -nographics \
                         -quit \
                         -logfile "$(pwd)/../../logs/${WORKER_TYPE}-${BUILD_ENVIRONMENT}-xcode-build.log" \
                         -executeMethod "Improbable.Gdk.Mobile.iOSUtils.Build" \
