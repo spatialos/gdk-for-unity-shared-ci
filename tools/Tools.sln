@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27703.2000
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DocsLinter", "DocsLinter\DocsLinter.csproj", "{A8D920E3-1239-4280-9FD8-CEB5D013DE45}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnityPaths", "UnityPaths\UnityPaths.csproj", "{6B5EDA68-527B-4A29-9E82-F3F384C12663}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RunUnity", "RunUnity\RunUnity.csproj", "{EC601956-117E-484C-A813-5E500DAFFDB2}"
