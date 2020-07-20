@@ -53,6 +53,10 @@ steps:
     command: ci/publish-packages.sh
     <<: *common
 
+  - label: Trigger API docs generation and publication
+    trigger: gdk-for-unity-generate-docs
+    async: true
+
   - wait
 
   # Will upload metadata with the PR link.
