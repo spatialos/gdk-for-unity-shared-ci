@@ -1,4 +1,4 @@
-FROM microsoft/dotnet:2.2-sdk as build
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 as build
 
 # Copy everything and build
 WORKDIR /app
@@ -6,9 +6,10 @@ COPY ./tools ./
 RUN dotnet publish -c Release -o out
 
 # Build runtime image
-FROM mcr.microsoft.com/dotnet/core/runtime:2.2
+# Requires the bionic image due to runtime requirements of the libgit2sharp library
+FROM mcr.microsoft.com/dotnet/core/runtime:3.1-bionic
 WORKDIR /app
-COPY --from=build /app/*/out ./
+COPY --from=build /app/out ./
 
 # Setup GIT
 RUN apt-get update && \
